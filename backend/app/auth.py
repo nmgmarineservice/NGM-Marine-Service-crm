@@ -20,8 +20,7 @@ async def verify_token(authorization: str = Header(...)) -> dict:
         # If it's a clock skew error, try again with a small time buffer
         if "used too early" in str(e):
             # Wait a moment and retry once
-            import time
-            time.sleep(1)
+            await asyncio.sleep(1)
             try:
                 decoded = auth.verify_id_token(token)
                 return decoded

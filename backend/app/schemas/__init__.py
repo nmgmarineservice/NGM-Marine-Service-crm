@@ -66,8 +66,13 @@ class ShipCreate(BaseModel):
 
 class ShipUpdate(BaseModel):
     name: Optional[str] = None
+    type: Optional[ShipType] = None
+    imo_number: Optional[str] = None
+    flag_state: Optional[str] = None
     status: Optional[ShipStatus] = None
     call_sign: Optional[str] = None
+    gross_tonnage: Optional[float] = None
+    built_year: Optional[int] = None
     owner: Optional[str] = None
     operator: Optional[str] = None
 
@@ -742,3 +747,6 @@ class ClientResponse(BaseModel):
     created_by: str
     created_at: datetime
     updated_at: datetime
+
+from .documents import *
+from .onboarding import *

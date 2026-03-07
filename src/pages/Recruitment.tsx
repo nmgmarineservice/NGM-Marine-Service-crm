@@ -9,7 +9,7 @@ import { Avatar, AvatarFallback } from '../components/ui/avatar';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../components/ui/dialog';
 import { Label } from '../components/ui/label';
 import { useAuth } from '../contexts/AuthContext';
-import { recruitmentApi, shipsApi, CandidateResponse, CandidateCreate, CandidateUpdate, ShipResponse, RecruitmentStage, CandidateSource } from '../services/api';
+import { recruitmentApi, shipsApi, onboardingApi, CandidateResponse, CandidateCreate, CandidateUpdate, ShipResponse, RecruitmentStage, CandidateSource } from '../services/api';
 import { toast } from 'sonner';
 
 const columns: { id: RecruitmentStage; title: string; color: string }[] = [
@@ -41,6 +41,8 @@ export function Recruitment() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedCandidate, setSelectedCandidate] = useState<CandidateResponse | null>(null);
+  const [isTriggerDialogOpen, setIsTriggerDialogOpen] = useState(false);
+  const [triggerCrewId, setTriggerCrewId] = useState('');
 
   // Form state
   const [formData, setFormData] = useState({
@@ -245,6 +247,29 @@ export function Recruitment() {
     }
   };
 
+  const handleTriggerOnboarding = (candidate: CandidateResponse) => {
+    setSelectedCandidate(candidate);
+    setIsTriggerDialogOpen(true);
+    setTriggerCrewId(''); 
+  };
+
+  const confirmTriggerOnboarding = async () => {
+    if (!selectedCandidate || !triggerCrewId) {
+        toast.error("Please enter a Crew ID");
+        return;
+    }
+    try {
+        const res = await onboardingApi.trigger(selectedCandidate.id, triggerCrewId);
+        if (res.error) throw new Error(res.error);
+        
+        toast.success("Onboarding triggered successfully");
+        setIsTriggerDialogOpen(false);
+    } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : 'Failed to trigger onboarding';
+        toast.error(errorMessage);
+    }
+  };
+
   // Filter candidates
   const filteredCandidates = candidates.filter(candidate => {
     const matchesVessel = vesselFilter === 'all' || candidate.vessel_id === vesselFilter;
@@ -275,13 +300,21 @@ export function Recruitment() {
           <p className="text-sm text-muted-foreground">Track candidate applications and hiring progress</p>
         </div>
         {isStaffOrMaster && (
-          <Button 
-            className="bg-accent text-accent-foreground hover:bg-accent/90"
-            onClick={(e: React.MouseEvent) => { e.preventDefault(); resetForm(); setIsCreateDialogOpen(true); }}
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Add Candidate
-          </Button>
+          <>
+            <Button 
+              className="bg-accent text-accent-foreground hover:bg-accent/90"
+              onClick={(e: React.MouseEvent) => { e.preventDefault(); resetForm(); setIsCreateDialogOpen(true); }}
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Add Candidate
+            </Button>
+            <Button 
+              className="ml-2 bg-blue-600 text-white hover:bg-blue-700"
+              onClick={() => window.location.href = '/recruitment/onboarding-management'}
+            >
+              Manage Onboarding
+            </Button>
+          </>
         )}
       </div>
 
@@ -370,53 +403,67 @@ export function Recruitment() {
                           
                           {/* Action buttons */}
                           {isStaffOrMaster && (
-                            <div className="flex items-center justify-between mt-3 pt-3 border-t border-border">
-                              <div className="flex gap-1">
-                                {columnIndex > 0 && (
+                            <div className="flex flex-col gap-2 mt-3 pt-3 border-t border-border">
+                              <div className="flex items-center justify-between">
+                                <div className="flex gap-1">
+                                  {columnIndex > 0 && (
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-7 w-7 p-0"
+                                      onClick={() => handleMoveStage(candidate, 'prev')}
+                                      title="Move to previous stage"
+                                    >
+                                      <ChevronLeft className="h-4 w-4" />
+                                    </Button>
+                                  )}
+                                  {columnIndex < columns.length - 1 && (
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-7 w-7 p-0"
+                                      onClick={() => handleMoveStage(candidate, 'next')}
+                                      title="Move to next stage"
+                                    >
+                                      <ChevronRight className="h-4 w-4" />
+                                    </Button>
+                                  )}
+                                </div>
+                                <div className="flex gap-1">
                                   <Button
                                     variant="ghost"
                                     size="sm"
                                     className="h-7 w-7 p-0"
-                                    onClick={() => handleMoveStage(candidate, 'prev')}
-                                    title="Move to previous stage"
+                                    onClick={() => openEditDialog(candidate)}
+                                    title="Edit candidate"
                                   >
-                                    <ChevronLeft className="h-4 w-4" />
+                                    <Pencil className="h-4 w-4" />
                                   </Button>
-                                )}
-                                {columnIndex < columns.length - 1 && (
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-7 w-7 p-0"
-                                    onClick={() => handleMoveStage(candidate, 'next')}
-                                    title="Move to next stage"
-                                  >
-                                    <ChevronRight className="h-4 w-4" />
-                                  </Button>
-                                )}
+                                  {isMaster && (
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-7 w-7 p-0 text-red-600 hover:text-red-700"
+                                      onClick={() => openDeleteDialog(candidate)}
+                                      title="Delete candidate"
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  )}
+                                </div>
                               </div>
-                              <div className="flex gap-1">
+                              
+                              {/* Trigger Onboarding Button for Accepted Candidates */}
+                              {column.id === 'accepted' && (
                                 <Button
-                                  variant="ghost"
+                                  variant="outline"
                                   size="sm"
-                                  className="h-7 w-7 p-0"
-                                  onClick={() => openEditDialog(candidate)}
-                                  title="Edit candidate"
+                                  className="w-full text-xs border-green-200 hover:bg-green-50 text-green-700"
+                                  onClick={() => handleTriggerOnboarding(candidate)}
                                 >
-                                  <Pencil className="h-4 w-4" />
+                                  Trigger Onboarding
                                 </Button>
-                                {isMaster && (
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-7 w-7 p-0 text-red-600 hover:text-red-700"
-                                    onClick={() => openDeleteDialog(candidate)}
-                                    title="Delete candidate"
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
-                                )}
-                              </div>
+                              )}
                             </div>
                           )}
                         </CardContent>

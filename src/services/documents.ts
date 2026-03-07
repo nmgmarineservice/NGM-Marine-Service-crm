@@ -33,8 +33,9 @@ const apiRequest = async <T>(
     try {
         const token = await getAuthToken();
 
+        const isFormData = options.body instanceof FormData;
         const headers: Record<string, string> = {
-            'Content-Type': 'application/json',
+            ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
             ...((options.headers as Record<string, string>) || {}),
         };
 
@@ -78,6 +79,12 @@ export const documentService = {
         });
     },
 
+    deleteManual: async (id: string) => {
+        return apiRequest<any>(`/documents/manuals/${id}`, {
+            method: 'DELETE'
+        });
+    },
+
     // --- Templates ---
     getTemplates: async (category?: FormCategory) => {
         const queryParams = new URLSearchParams();
@@ -94,6 +101,26 @@ export const documentService = {
         return apiRequest<FormTemplate>('/documents/templates', {
             method: 'POST',
             body: JSON.stringify(data)
+        });
+    },
+
+    updateTemplate: async (id: string, data: Partial<FormTemplate>) => {
+        return apiRequest<FormTemplate>(`/documents/templates/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(data)
+        });
+    },
+
+    deleteTemplate: async (id: string) => {
+        return apiRequest<any>(`/documents/templates/${id}`, {
+            method: 'DELETE'
+        });
+    },
+
+    bulkDeleteTemplates: async (ids: string[]) => {
+        return apiRequest<any>('/documents/templates/bulk-delete', {
+            method: 'POST',
+            body: JSON.stringify({ template_ids: ids })
         });
     },
 
@@ -124,6 +151,42 @@ export const documentService = {
     approveSubmission: async (id: string) => {
         return apiRequest<FormSubmission>(`/documents/submissions/${id}/approve`, {
             method: 'POST'
+        });
+    },
+
+    deleteSubmission: async (id: string) => {
+        return apiRequest<any>(`/documents/submissions/${id}`, {
+            method: 'DELETE'
+        });
+    },
+
+    smartImportDocument: async (file: File) => {
+        const formData = new FormData();
+        formData.append('file', file);
+        return apiRequest<any>('/parser/word-to-form', {
+            method: 'POST',
+            body: formData
+        });
+    },
+
+    bulkImportDocuments: async (files: File[]) => {
+        const formData = new FormData();
+        files.forEach(f => formData.append('files', f));
+        return apiRequest<any>('/parser/bulk-import', {
+            method: 'POST',
+            body: formData
+        });
+    },
+
+    uploadFile: async (file: File, category: string, subcategory?: string) => {
+        const formData = new FormData();
+        formData.append('file', file);
+        if (category) formData.append('category', category);
+        if (subcategory) formData.append('subcategory', subcategory);
+
+        return apiRequest<{ filename: string; url: string }>('/uploads', {
+            method: 'POST',
+            body: formData
         });
     }
 };

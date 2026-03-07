@@ -22,6 +22,8 @@ from app.routes.clients import router as clients_router
 from app.routes.dashboard import router as dashboard_router
 from app.routes.documents import router as documents_router
 from app.routes.uploads import router as uploads_router
+from app.routes.parser import router as parser_router
+from app.routes.onboarding import router as onboarding_router
 from app.database import ship_service, user_service
 from app.schemas import *
 from fastapi.staticfiles import StaticFiles
@@ -122,7 +124,9 @@ app.include_router(dg_communications_router, prefix="/api/v1")
 app.include_router(invoices_router, prefix="/api/v1")
 app.include_router(documents_router, prefix="/api/v1")
 app.include_router(uploads_router, prefix="/api/v1")
+app.include_router(parser_router, prefix="/api/v1")
 app.include_router(clients_router, prefix="/api/v1")
+app.include_router(onboarding_router, prefix="/api/v1")
 app.include_router(admin_router, prefix="/api/v1")
 
 # Mount files directory to serve documents

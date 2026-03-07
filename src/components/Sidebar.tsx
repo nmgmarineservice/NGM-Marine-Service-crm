@@ -48,6 +48,7 @@ const menuItems = [
   { path: '/staff', label: 'Staff', icon: UserCog, roles: ['master'] },
   { path: '/crew', label: 'Crew', icon: UsersRound, roles: ['master', 'staff'] },
   { path: '/recruitment', label: 'Recruitment', icon: UserPlus, roles: ['master', 'staff'] },
+  { path: '/onboarding', label: 'Onboarding', icon: ClipboardCheck, roles: ['crew'] },
   { path: '/dg-communication', label: 'DG Communication', icon: Radio, roles: ['master', 'staff'] },
   { path: '/invoices', label: 'Invoices', icon: Receipt, roles: ['master', 'staff'] },
   { path: '/settings', label: 'Settings', icon: Settings, roles: ['master', 'crew', 'staff'] },

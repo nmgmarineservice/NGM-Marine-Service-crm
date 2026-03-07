@@ -7,11 +7,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Plus, Trash2, Calendar as CalendarIcon } from 'lucide-react';
+import { Plus, Trash2, Calendar as CalendarIcon, FileText, FileSpreadsheet, Download, Upload, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { SpreadsheetGrid } from './SpreadsheetGrid';
+import { documentService } from '@/services/documents';
+import { toast } from 'sonner';
 
 interface FormRendererProps {
     template: FormTemplate;
@@ -57,6 +60,23 @@ export const FormRenderer: React.FC<FormRendererProps> = ({ template, initialDat
         if (!newRows[rowIndex]) newRows[rowIndex] = {};
         newRows[rowIndex] = { ...newRows[rowIndex], [columnId]: value };
         handleFieldChange(fieldId, newRows);
+    };
+
+    const handleFileUpload = async (file: File, fieldPrefix: string) => {
+        const loadingToast = toast.loading("Uploading file...");
+        try {
+            const res = await documentService.uploadFile(file, 'LAYER_3_FORM_SUBMISSIONS');
+            if (res.data) {
+                handleFieldChange(`${fieldPrefix}_url`, res.data.url);
+                handleFieldChange(`${fieldPrefix}_name`, file.name);
+                toast.success("File uploaded", { id: loadingToast });
+            } else {
+                toast.error("Upload failed", { id: loadingToast });
+            }
+        } catch (error) {
+            console.error(error);
+            toast.error("Upload error", { id: loadingToast });
+        }
     };
 
     const renderInput = (field: FormField, value: any, onValueChange: (v: any) => void) => {
@@ -137,6 +157,88 @@ export const FormRenderer: React.FC<FormRendererProps> = ({ template, initialDat
 
     return (
         <div className="space-y-6">
+            {template.spreadsheet_data && (
+                <div className="space-y-4 p-4 border rounded-lg bg-blue-50/50">
+                    <div className="flex items-center gap-3">
+                        <div className="p-2 bg-green-100 rounded text-green-700">
+                           <FileSpreadsheet className="w-6 h-6" />
+                        </div>
+                        <div>
+                            <h3 className="font-semibold text-blue-900">Direct Excel Link (File Tunnel)</h3>
+                            <p className="text-sm text-blue-700">Download the official Excel template, fill it offline, and upload it here.</p>
+                        </div>
+                    </div>
+                    
+                     <div className="grid grid-cols-2 gap-4">
+                          <div className="border p-4 rounded bg-white text-center hover:bg-gray-50 cursor-pointer transition-colors" onClick={() => window.open(template.spreadsheet_data.file_url, '_blank')}>
+                             <span className="block text-sm font-medium mb-1 text-gray-900">Step 1: Get Template</span>
+                              <span className="text-xs text-blue-600 underline flex items-center justify-center gap-1">
+                                 <Download className="w-3 h-3" /> Download {template.name}.xlsx
+                              </span>
+                          </div>
+                          
+                          <div className="border border-dashed border-blue-300 p-4 rounded bg-blue-50/30 text-center relative hover:bg-blue-50 transition-colors">
+                              {!readOnly && (
+                                <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  if(file) handleFileUpload(file, '__spreadsheet');
+                                }} accept=".xlsx,.xls" />
+                              )}
+                              <span className="block text-sm font-medium mb-1 text-gray-900">Step 2: Upload Filled File</span>
+                              {data['__spreadsheet_name'] ? (
+                                <span className="text-xs text-green-600 font-medium flex items-center justify-center gap-1">
+                                    <FileSpreadsheet className="w-3 h-3" /> {data['__spreadsheet_name']}
+                                </span>
+                              ) : (
+                                <span className="text-xs text-gray-500">Click to select file...</span>
+                              )}
+                          </div>
+                     </div>
+                 </div>
+             )}
+
+            {template.document_data && (
+                <div className="space-y-4 p-4 border rounded-lg bg-blue-50/50">
+                    <div className="flex items-center gap-3">
+                        <div className="p-2 bg-blue-100 rounded text-blue-700">
+                           <FileText className="w-6 h-6" />
+                        </div>
+                        <div>
+                            <h3 className="font-semibold text-blue-900">Document Template</h3>
+                            <p className="text-sm text-blue-700">Download the document, fill it out, and upload the signed copy.</p>
+                        </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                         <div className="border p-4 rounded bg-white text-center hover:bg-gray-50 cursor-pointer transition-colors" onClick={() => window.open(template.document_data.file_url, '_blank')}>
+                            <span className="block text-sm font-medium mb-1 text-gray-900">Step 1: Get Document</span>
+                             <span className="text-xs text-blue-600 underline flex items-center justify-center gap-1">
+                                <Download className="w-3 h-3" /> Download Document
+                             </span>
+                         </div>
+                         
+                         <div className="border border-dashed border-blue-300 p-4 rounded bg-blue-50/30 text-center relative group hover:bg-blue-50 transition-colors">
+                             {!readOnly && (
+                                <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" onChange={(e) => {
+                                     const file = e.target.files?.[0];
+                                     if(file) handleFileUpload(file, '__document');
+                                 }} accept=".doc,.docx,.pdf" />
+                             )}
+                             <span className="block text-sm font-medium mb-1 text-gray-900">Step 2: Upload Filled Document</span>
+                             {data['__document_name'] ? (
+                                <span className="text-xs text-green-600 font-medium flex items-center justify-center gap-1">
+                                    <FileText className="w-3 h-3" /> {data['__document_name']}
+                                </span>
+                             ) : (
+                                <span className="text-xs text-gray-500 group-hover:text-blue-600 flex items-center justify-center gap-1">
+                                    <Upload className="w-3 h-3" /> Click to select file...
+                                </span>
+                             )}
+                         </div>
+                    </div>
+                </div>
+            )}
+
             {template.fields.map((field) => (
                 <div key={field.id} className="space-y-2">
                     <Label className={cn(field.required && "after:content-['*'] after:ml-0.5 after:text-red-500")}>

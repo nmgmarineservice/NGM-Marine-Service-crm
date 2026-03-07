@@ -6,6 +6,8 @@ from app.schemas import LogType, LogStatus, InvoiceStatus, InvoiceCategory, Noti
 from app.schemas import RecruitmentStage, CandidateSource
 from app.schemas import DGCommunicationType, DGCommunicationStatus, DGCommunicationCategory
 from app.schemas import ClientStatus
+from app.schemas import FormCategory, ScheduleFrequency, AssignedRole
+from app.schemas import OnboardingStatus
 
 
 def safe_enum_convert(enum_class, value, default=None):
@@ -128,6 +130,22 @@ class CrewLog(BaseModel):
         self.remarks: Optional[str] = kwargs.get('remarks')
         self.approved_by: Optional[str] = kwargs.get('approved_by')
         self.approval_notes: Optional[str] = kwargs.get('approval_notes')
+
+class FormTemplate(BaseModel):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.name: str = kwargs.get('name', '')
+        self.category: FormCategory = safe_enum_convert(FormCategory, kwargs.get('category'), FormCategory.CHECKLIST)
+        self.description: Optional[str] = kwargs.get('description')
+        self.fields: List[Dict[str, Any]] = kwargs.get('fields', [])
+        # Spreadsheet Integration
+        self.spreadsheet_data: Optional[Dict[str, Any]] = kwargs.get('spreadsheet_data')
+        
+        self.approval_required: bool = kwargs.get('approval_required', True)
+        self.manual_reference_id: Optional[str] = kwargs.get('manual_reference_id')
+        self.scheduled: ScheduleFrequency = safe_enum_convert(ScheduleFrequency, kwargs.get('scheduled'), ScheduleFrequency.WEEKLY)
+        self.role: AssignedRole = safe_enum_convert(AssignedRole, kwargs.get('role'), AssignedRole.CREW)
+        self.created_by: str = kwargs.get('created_by', '')
 
 def parse_date_string(date_val) -> datetime:
     """Parse various date formats to datetime"""
@@ -256,3 +274,25 @@ class Client(BaseModel):
         self.status: ClientStatus = safe_enum_convert(ClientStatus, kwargs.get('status'), ClientStatus.ACTIVE)
         self.notes: Optional[str] = kwargs.get('notes')
         self.created_by: str = kwargs.get('created_by', '')
+
+class CrewOnboarding(BaseModel):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.candidate_id: str = kwargs.get('candidate_id', '')
+        self.crew_id: str = kwargs.get('crew_id', '')
+        self.status: OnboardingStatus = safe_enum_convert(OnboardingStatus, kwargs.get('status'), OnboardingStatus.PENDING_SUBMISSION)
+        
+        self.application_data: Dict[str, Any] = kwargs.get('application_data', {})
+        self.documents: List[str] = kwargs.get('documents', [])
+        
+        self.master_approval_date: Optional[datetime] = kwargs.get('master_approval_date')
+        self.master_id: Optional[str] = kwargs.get('master_id')
+        self.rejection_reason: Optional[str] = kwargs.get('rejection_reason')
+        
+        self.agreement_url: Optional[str] = kwargs.get('agreement_url')
+        self.agreement_details: Optional[Dict[str, Any]] = kwargs.get('agreement_details')
+        
+        self.accepted_at: Optional[datetime] = kwargs.get('accepted_at')
+        self.accepted_ip: Optional[str] = kwargs.get('accepted_ip')
+        self.accepted_user_agent: Optional[str] = kwargs.get('accepted_user_agent')
+        self.agreement_version_id: Optional[str] = kwargs.get('agreement_version_id')

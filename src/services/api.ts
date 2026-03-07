@@ -15,7 +15,7 @@ interface ApiResponse<T> {
 const getAuthToken = async (): Promise<string | null> => {
   const user = auth.currentUser;
   if (!user) return null;
-  
+
   try {
     const token = await user.getIdToken();
     return token;
@@ -32,7 +32,7 @@ const apiRequest = async <T>(
 ): Promise<ApiResponse<T>> => {
   try {
     const token = await getAuthToken();
-    
+
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       ...((options.headers as Record<string, string>) || {}),
@@ -65,19 +65,19 @@ const apiRequest = async <T>(
 // User API
 export const userApi = {
   getCurrentUser: () => apiRequest<UserResponse>('/users/me'),
-  
-  getAllUsers: (skip = 0, limit = 100) => 
+
+  getAllUsers: (skip = 0, limit = 100) =>
     apiRequest<UserResponse[]>(`/users?skip=${skip}&limit=${limit}`),
-  
-  getUserById: (userId: string) => 
+
+  getUserById: (userId: string) =>
     apiRequest<UserResponse>(`/users/${userId}`),
-  
+
   createUser: (userData: UserCreate) =>
     apiRequest<UserResponse>('/users', {
       method: 'POST',
       body: JSON.stringify(userData),
     }),
-  
+
   updateUser: (userId: string, userData: UserUpdate) =>
     apiRequest<UserResponse>(`/users/${userId}`, {
       method: 'PUT',
@@ -85,7 +85,7 @@ export const userApi = {
     }),
 
   deleteUser: (userId: string) =>
-    apiRequest<{message: string}>(`/users/${userId}`, {
+    apiRequest<{ message: string }>(`/users/${userId}`, {
       method: 'DELETE',
     }),
 
@@ -96,16 +96,16 @@ export const userApi = {
 // Ships API
 export const shipsApi = {
   getAllShips: () => apiRequest<ShipResponse[]>('/ships'),
-  
+
   getShipById: (shipId: string) =>
     apiRequest<ShipResponse>(`/ships/${shipId}`),
-  
+
   createShip: (shipData: ShipCreate) =>
     apiRequest<ShipResponse>('/ships', {
       method: 'POST',
       body: JSON.stringify(shipData),
     }),
-  
+
   updateShip: (shipId: string, shipData: ShipUpdate) =>
     apiRequest<ShipResponse>(`/ships/${shipId}`, {
       method: 'PUT',
@@ -113,7 +113,7 @@ export const shipsApi = {
     }),
 
   deleteShip: (shipId: string) =>
-    apiRequest<{message: string}>(`/ships/${shipId}`, {
+    apiRequest<{ message: string }>(`/ships/${shipId}`, {
       method: 'DELETE',
     }),
 };
@@ -128,28 +128,28 @@ export const pmsApi = {
     const queryString = query.toString();
     return apiRequest<PMSTaskResponse[]>(`/pms${queryString ? '?' + queryString : ''}`);
   },
-  
+
   getTaskById: (taskId: string) =>
     apiRequest<PMSTaskResponse>(`/pms/${taskId}`),
-  
+
   createTask: (taskData: PMSTaskCreate) =>
     apiRequest<PMSTaskResponse>('/pms', {
       method: 'POST',
       body: JSON.stringify(taskData),
     }),
-  
+
   updateTask: (taskId: string, taskData: PMSTaskUpdate) =>
     apiRequest<PMSTaskResponse>(`/pms/${taskId}`, {
       method: 'PUT',
       body: JSON.stringify(taskData),
     }),
-  
+
   approveTask: (taskId: string, notes?: string) =>
     apiRequest<PMSTaskResponse>(`/pms/${taskId}/approve`, {
       method: 'POST',
       body: JSON.stringify({ approval_notes: notes }),
     }),
-  
+
   rejectTask: (taskId: string, notes: string) =>
     apiRequest<PMSTaskResponse>(`/pms/${taskId}/reject`, {
       method: 'POST',
@@ -158,9 +158,9 @@ export const pmsApi = {
 
   getShipStats: (shipId: string) =>
     apiRequest<PMSStats>(`/pms/ship/${shipId}/stats`),
-    
+
   deleteTask: (taskId: string) =>
-    apiRequest<{message: string}>(`/pms/${taskId}`, {
+    apiRequest<{ message: string }>(`/pms/${taskId}`, {
       method: 'DELETE',
     }),
 };
@@ -169,10 +169,10 @@ export const pmsApi = {
 export const dashboardApi = {
   getFleetSummary: () =>
     apiRequest<FleetSummary>('/dashboard/fleet-summary'),
-  
+
   getMyTasks: () =>
     apiRequest<MyTasksResponse>('/dashboard/my-tasks'),
-  
+
   getNotifications: () =>
     apiRequest<NotificationsResponse>('/dashboard/notifications'),
 };
@@ -203,15 +203,15 @@ export const worklogsApi = {
       method: 'POST',
       body: JSON.stringify(logData),
     }),
-    
+
   updateLog: (logId: string, logData: WorkLogUpdate) =>
     apiRequest<WorkLogResponse>(`/worklogs/${logId}`, {
       method: 'PUT',
       body: JSON.stringify(logData),
     }),
-    
+
   deleteLog: (logId: string) =>
-    apiRequest<{message: string}>(`/worklogs/${logId}`, {
+    apiRequest<{ message: string }>(`/worklogs/${logId}`, {
       method: 'DELETE',
     }),
 
@@ -292,8 +292,13 @@ export interface ShipCreate {
 
 export interface ShipUpdate {
   name?: string;
+  type?: string;
+  imo_number?: string;
+  flag_state?: string;
   status?: 'active' | 'maintenance' | 'docked' | 'inactive';
   call_sign?: string;
+  gross_tonnage?: number;
+  built_year?: number;
   owner?: string;
   operator?: string;
 }
@@ -523,18 +528,18 @@ export interface CargoResponse {
 
 // Incidents API
 export const incidentsApi = {
-  getAll: (shipId?: string) => 
+  getAll: (shipId?: string) =>
     apiRequest<IncidentResponse[]>(`/incidents${shipId ? `?ship_id=${shipId}` : ''}`),
-  
+
   getById: (incidentId: string) =>
     apiRequest<IncidentResponse>(`/incidents/${incidentId}`),
-  
+
   create: (data: IncidentCreate) =>
     apiRequest<IncidentResponse>('/incidents', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
-  
+
   update: (incidentId: string, data: IncidentUpdate) =>
     apiRequest<IncidentResponse>(`/incidents/${incidentId}`, {
       method: 'PUT',
@@ -574,18 +579,18 @@ export interface WorkLogCreate {
 
 // Audits API
 export const auditsApi = {
-  getAll: (shipId?: string) => 
+  getAll: (shipId?: string) =>
     apiRequest<AuditResponse[]>(`/audits${shipId ? `?ship_id=${shipId}` : ''}`),
-  
+
   getById: (auditId: string) =>
     apiRequest<AuditResponse>(`/audits/${auditId}`),
-  
+
   create: (data: AuditCreate) =>
     apiRequest<AuditResponse>('/audits', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
-  
+
   update: (auditId: string, data: AuditUpdate) =>
     apiRequest<AuditResponse>(`/audits/${auditId}`, {
       method: 'PUT',
@@ -595,18 +600,18 @@ export const auditsApi = {
 
 // Cargo API
 export const cargoApi = {
-  getAll: (shipId?: string) => 
+  getAll: (shipId?: string) =>
     apiRequest<CargoResponse[]>(`/cargo${shipId ? `?ship_id=${shipId}` : ''}`),
-  
+
   getById: (cargoId: string) =>
     apiRequest<CargoResponse>(`/cargo/${cargoId}`),
-  
+
   create: (data: CargoCreate) =>
     apiRequest<CargoResponse>('/cargo', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
-  
+
   update: (cargoId: string, data: CargoUpdate) =>
     apiRequest<CargoResponse>(`/cargo/${cargoId}`, {
       method: 'PUT',
@@ -838,9 +843,9 @@ export interface DGCommunicationStats {
 
 // DG Communications API
 export const dgCommunicationApi = {
-  getAll: (params?: { 
-    comm_type?: DGCommunicationType; 
-    status?: DGCommunicationStatus; 
+  getAll: (params?: {
+    comm_type?: DGCommunicationType;
+    status?: DGCommunicationStatus;
     category?: DGCommunicationCategory;
     ship_id?: string;
   }) => {
@@ -849,7 +854,7 @@ export const dgCommunicationApi = {
     if (params?.status) query.append('status', params.status);
     if (params?.category) query.append('category', params.category);
     if (params?.ship_id) query.append('ship_id', params.ship_id);
-    
+
     return apiRequest<DGCommunicationResponse[]>(`/dg-communications?${query.toString()}`);
   },
 
@@ -946,7 +951,7 @@ export const invoicesApi = {
     const query = new URLSearchParams();
     if (params?.ship_id) query.append('ship_id', params.ship_id);
     if (params?.status) query.append('status', params.status);
-    
+
     return apiRequest<InvoiceResponse[]>(`/invoices?${query.toString()}`);
   },
 
@@ -1052,7 +1057,7 @@ export const clientsApi = {
     const query = new URLSearchParams();
     if (params?.status) query.append('status', params.status);
     if (params?.country) query.append('country', params.country);
-    
+
     return apiRequest<ClientResponse[]>(`/clients?${query.toString()}`);
   },
 
@@ -1078,4 +1083,108 @@ export const clientsApi = {
     apiRequest<{ message: string }>(`/clients/${clientId}`, {
       method: 'DELETE',
     }),
+};
+
+// Onboarding Types
+export type OnboardingStatus =
+  | 'pending_submission'
+  | 'crew_onboarding_submitted'
+  | 'crew_onboarding_approved_by_master'
+  | 'rejected_by_master'
+  | 'agreement_uploaded'
+  | 'agreement_downloaded_by_crew';
+
+export interface CrewApplicationSubmit {
+  application_data: Record<string, any>;
+  documents?: string[];
+}
+
+export interface MasterReviewAction {
+  approved: boolean;
+  rejection_reason?: string;
+}
+
+export interface AgreementPrepare {
+  agreement_url: string;
+  vessel_name: string;
+  crew_name: string;
+  rank: string;
+  joining_date: string; // ISO date string
+  contract_duration: string;
+}
+
+export interface AgreementAccept {
+  accepted: boolean;
+  ip_address?: string; // Optional as backend can fill
+  user_agent?: string; // Optional as backend can fill
+}
+
+export interface OnboardingResponse {
+  id: string;
+  candidate_id: string;
+  crew_id: string;
+  status: OnboardingStatus;
+
+  application_data: Record<string, any>;
+  documents: string[];
+
+  master_approval_date?: string;
+  master_id?: string;
+  rejection_reason?: string;
+
+  agreement_url?: string;
+  agreement_details?: Record<string, any>;
+
+  accepted_at?: string;
+  accepted_ip?: string;
+  accepted_user_agent?: string;
+  agreement_version_id?: string;
+
+  created_at: string;
+  updated_at: string;
+}
+
+// Onboarding API
+export const onboardingApi = {
+  trigger: (candidateId: string, crewId: string) =>
+    apiRequest<OnboardingResponse>(`/onboarding/trigger?candidate_id=${candidateId}&crew_id=${crewId}`, {
+      method: 'POST'
+    }),
+
+  getMyApplications: () =>
+    apiRequest<OnboardingResponse[]>('/onboarding/my'),
+
+  getAllApplications: () =>
+    apiRequest<OnboardingResponse[]>('/onboarding/all'),
+
+
+  getApplicationById: (id: string) =>
+    apiRequest<OnboardingResponse>(`/onboarding/${id}`),
+
+  getApplicationByCandidate: (candidateId: string) =>
+    apiRequest<OnboardingResponse>(`/onboarding/candidate/${candidateId}`),
+
+  submitApplication: (id: string, data: CrewApplicationSubmit) =>
+    apiRequest<OnboardingResponse>(`/onboarding/${id}/submit`, {
+      method: 'PUT',
+      body: JSON.stringify(data)
+    }),
+
+  masterReview: (id: string, action: MasterReviewAction) =>
+    apiRequest<OnboardingResponse>(`/onboarding/${id}/master-review`, {
+      method: 'POST',
+      body: JSON.stringify(action)
+    }),
+
+  prepareAgreement: (id: string, data: AgreementPrepare) =>
+    apiRequest<OnboardingResponse>(`/onboarding/${id}/agreement/prepare`, {
+      method: 'POST',
+      body: JSON.stringify(data)
+    }),
+
+  respondAgreement: (id: string, action: AgreementAccept) =>
+    apiRequest<OnboardingResponse>(`/onboarding/${id}/agreement/respond`, {
+      method: 'POST',
+      body: JSON.stringify(action)
+    })
 };

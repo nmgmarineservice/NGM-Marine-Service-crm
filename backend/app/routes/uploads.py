@@ -12,6 +12,7 @@ router = APIRouter(prefix="/uploads", tags=["uploads"])
 ROOT_DIR = Path(__file__).resolve().parent.parent.parent.parent
 UPLOAD_DIR = ROOT_DIR / "files"
 
+@router.post("")
 @router.post("/")
 async def upload_file(
     file: UploadFile = File(...),

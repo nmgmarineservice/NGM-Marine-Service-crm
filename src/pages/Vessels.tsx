@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Plus, Search, LayoutGrid, List, Ship, Users, Loader2, AlertCircle, Pencil, Trash2, MoreHorizontal } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -15,6 +16,7 @@ import { toast } from 'sonner';
 
 export function Vessels() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [ships, setShips] = useState<ShipResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -292,7 +294,11 @@ export function Vessels() {
       {viewMode === 'grid' && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredVessels.map((vessel) => (
-            <Card key={vessel.id} className="hover:shadow-lg transition-shadow cursor-pointer">
+            <Card 
+              key={vessel.id} 
+              className="hover:shadow-lg transition-shadow cursor-pointer"
+              onClick={() => navigate(`/vessels/${vessel.id}`)}
+            >
               <CardHeader>
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
@@ -381,7 +387,11 @@ export function Vessels() {
             </TableHeader>
             <TableBody>
               {filteredVessels.map((vessel) => (
-                <TableRow key={vessel.id} className="cursor-pointer hover:bg-muted/50">
+                <TableRow 
+                  key={vessel.id} 
+                  className="cursor-pointer hover:bg-muted/50"
+                  onClick={() => navigate(`/vessels/${vessel.id}`)}
+                >
                   <TableCell>{vessel.name}</TableCell>
                   <TableCell className="text-muted-foreground">{vessel.imo_number}</TableCell>
                   <TableCell>{vessel.owner || 'N/A'}</TableCell>
@@ -399,10 +409,19 @@ export function Vessels() {
                   {isMaster && (
                     <TableCell>
                       <div className="flex items-center gap-2">
-                        <Button variant="ghost" size="sm" onClick={() => openEditDialog(vessel)}>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={(e) => { e.stopPropagation(); openEditDialog(vessel); }}
+                        >
                           <Pencil className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="sm" onClick={() => openDeleteDialog(vessel)} className="text-red-600 hover:text-red-700">
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={(e) => { e.stopPropagation(); openDeleteDialog(vessel); }}
+                          className="text-red-600 hover:text-red-700"
+                        >
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>

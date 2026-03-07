@@ -13,7 +13,10 @@ import {
     Calendar,
     Ship,
     Plus,
-    Users
+    Users,
+    Search,
+    Trash2,
+    Loader2
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { documentService } from '@/services/documents';
@@ -48,6 +51,7 @@ export default function Submissions() {
     const [submissions, setSubmissions] = useState<FormSubmission[]>([]);
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState<'all' | 'pending' | 'action'>('all');
+    const [searchQuery, setSearchQuery] = useState('');
 
     // Trigger Work State
     const [triggerOpen, setTriggerOpen] = useState(false);
@@ -60,6 +64,9 @@ export default function Submissions() {
     const [assignmentType, setAssignmentType] = useState<'all' | 'select'>('all');
     const [selectedCrewIds, setSelectedCrewIds] = useState<string[]>([]);
     const [triggering, setTriggering] = useState(false);
+    const [deletingId, setDeletingId] = useState<string | null>(null);
+    const [templateSearchQuery, setTemplateSearchQuery] = useState('');
+    const [crewSearchQuery, setCrewSearchQuery] = useState('');
 
     // Fill Form State
     const [fillOpen, setFillOpen] = useState(false);
@@ -88,6 +95,8 @@ export default function Submissions() {
             setCrewMembers([]);
             setAssignmentType('all');
             setSelectedCrewIds([]);
+            setTemplateSearchQuery('');
+            setCrewSearchQuery('');
         }
     }, [triggerOpen]);
 
@@ -186,6 +195,22 @@ export default function Submissions() {
         }
     };
 
+    const handleDeleteSubmission = async (id: string, name: string, e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (!window.confirm(`Are you sure you want to delete the submission for "${name}"?`)) return;
+
+        try {
+            setDeletingId(id);
+            await documentService.deleteSubmission(id);
+            toast.success("Submission deleted");
+            loadSubmissions();
+        } catch (error) {
+            toast.error("Failed to delete submission");
+        } finally {
+            setDeletingId(null);
+        }
+    };
+
     const handleFill = async (sub: FormSubmission, e: React.MouseEvent) => {
         e.stopPropagation();
         try {
@@ -230,6 +255,14 @@ export default function Submissions() {
             return false;
         }
 
+        // Apply search filter
+        const matchesSearch = sub.template_name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                             sub.vessel_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                             sub.assigned_to_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                             sub.submitted_by_name?.toLowerCase().includes(searchQuery.toLowerCase());
+        
+        if (!matchesSearch) return false;
+
         // Apply tab filters
         if (filter === 'pending') {
             return sub.status === FormStatus.PENDING;
@@ -258,6 +291,16 @@ export default function Submissions() {
         );
     };
 
+    const filteredTemplates = templates.filter(t => 
+        t.name.toLowerCase().includes(templateSearchQuery.toLowerCase()) ||
+        t.category.toLowerCase().includes(templateSearchQuery.toLowerCase())
+    );
+
+    const filteredCrew = crewMembers.filter(c => 
+        c.name.toLowerCase().includes(crewSearchQuery.toLowerCase()) ||
+        c.position?.toLowerCase().includes(crewSearchQuery.toLowerCase())
+    );
+
     return (
         <div className="space-y-6">
             <div className="flex justify-between items-center">
@@ -274,19 +317,32 @@ export default function Submissions() {
                 )}
             </div>
 
-            <Tabs defaultValue="all" onValueChange={(v) => setFilter(v as any)}>
-                <TabsList>
-                    <TabsTrigger value="all">All Forms</TabsTrigger>
-                    <TabsTrigger value="pending">Pending</TabsTrigger>
-                    <TabsTrigger value="action">
-                        {isMaster ? "Needs Approval" : (isCrew ? "To Do" : "Action Required")}
-                        {filteredSubmissions.length > 0 && filter === 'action' && (
-                            <span className="ml-2 bg-primary text-primary-foreground text-xs rounded-full px-2">
-                                {filteredSubmissions.length}
-                            </span>
-                        )}
-                    </TabsTrigger>
-                </TabsList>
+            <div className="flex flex-col md:flex-row gap-4 justify-between items-start md:items-center">
+                <Tabs defaultValue="all" onValueChange={(v) => setFilter(v as any)} className="w-full md:w-auto">
+                    <TabsList>
+                        <TabsTrigger value="all">All Forms</TabsTrigger>
+                        <TabsTrigger value="pending">Pending</TabsTrigger>
+                        <TabsTrigger value="action">
+                            {isMaster ? "Needs Approval" : (isCrew ? "To Do" : "Action Required")}
+                            {filteredSubmissions.length > 0 && filter === 'action' && (
+                                <span className="ml-2 bg-primary text-primary-foreground text-xs rounded-full px-2">
+                                    {filteredSubmissions.length}
+                                </span>
+                            )}
+                        </TabsTrigger>
+                    </TabsList>
+                </Tabs>
+
+                <div className="relative w-full md:w-64">
+                    <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
+                        placeholder="Search submissions..."
+                        className="pl-8"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                    />
+                </div>
+            </div>
 
                 <div className="grid gap-4 mt-6">
                     {filteredSubmissions.map((sub) => (
@@ -342,6 +398,18 @@ export default function Submissions() {
                                                     Approve
                                                 </Button>
                                             )}
+
+                                            {(isStaff || isMaster) && (
+                                                <Button 
+                                                    variant="ghost" 
+                                                    size="icon" 
+                                                    className="text-destructive h-8 w-8"
+                                                    onClick={(e) => handleDeleteSubmission(sub.id, sub.template_name, e)}
+                                                    disabled={deletingId === sub.id}
+                                                >
+                                                    {deletingId === sub.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                                                </Button>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
@@ -355,7 +423,6 @@ export default function Submissions() {
                         </div>
                     )}
                 </div>
-            </Tabs>
 
             {/* Trigger Work Dialog */}
             <Dialog open={triggerOpen} onOpenChange={setTriggerOpen}>
@@ -385,19 +452,30 @@ export default function Submissions() {
                             </div>
 
                             <div className="flex flex-col gap-2" style={{ flex: 1, minHeight: 0 }}>
-                                <Label className="text-base font-semibold">
-                                    Select Templates ({selectedTemplateIds.length} selected)
-                                </Label>
+                                <div className="flex items-center justify-between">
+                                    <Label className="text-base font-semibold">
+                                        Select Templates ({selectedTemplateIds.length} selected)
+                                    </Label>
+                                    <div className="relative w-48">
+                                        <Search className="absolute left-2 top-1.5 h-3.5 w-3.5 text-muted-foreground" />
+                                        <Input
+                                            placeholder="Search templates..."
+                                            className="pl-8 h-8 text-xs"
+                                            value={templateSearchQuery}
+                                            onChange={(e) => setTemplateSearchQuery(e.target.value)}
+                                        />
+                                    </div>
+                                </div>
                                 <div
                                     className="border rounded-lg overflow-y-auto p-3 space-y-2 bg-muted/30"
                                     style={{ height: '100%' }}
                                 >
-                                    {templates.length === 0 ? (
+                                    {filteredTemplates.length === 0 ? (
                                         <div className="text-center text-muted-foreground py-8">
-                                            No templates available
+                                            {templates.length === 0 ? "No templates available" : "No templates match your search"}
                                         </div>
                                     ) : (
-                                        templates.map(t => (
+                                        filteredTemplates.map(t => (
                                             <div
                                                 key={t.id}
                                                 className="flex items-start gap-3 p-3 hover:bg-background rounded-md cursor-pointer transition-colors border bg-background"
@@ -449,19 +527,30 @@ export default function Submissions() {
 
                             {assignmentType === 'select' && (
                                 <div className="flex flex-col gap-2" style={{ flex: 1, minHeight: 0 }}>
-                                    <Label className="text-base font-semibold">
-                                        Crew Members ({selectedCrewIds.length} selected)
-                                    </Label>
+                                    <div className="flex items-center justify-between">
+                                        <Label className="text-base font-semibold">
+                                            Crew Members ({selectedCrewIds.length} selected)
+                                        </Label>
+                                        <div className="relative w-48">
+                                            <Search className="absolute left-2 top-1.5 h-3.5 w-3.5 text-muted-foreground" />
+                                            <Input
+                                                placeholder="Search crew..."
+                                                className="pl-8 h-8 text-xs"
+                                                value={crewSearchQuery}
+                                                onChange={(e) => setCrewSearchQuery(e.target.value)}
+                                            />
+                                        </div>
+                                    </div>
                                     <div
                                         className="border rounded-lg overflow-y-auto p-3 space-y-2 bg-muted/30"
                                         style={{ height: '100%' }}
                                     >
-                                        {crewMembers.length === 0 ? (
+                                        {filteredCrew.length === 0 ? (
                                             <div className="text-center text-muted-foreground py-8">
-                                                No crew members found on this ship
+                                                {crewMembers.length === 0 ? "No crew members found on this ship" : "No crew match your search"}
                                             </div>
                                         ) : (
-                                            crewMembers.map(c => (
+                                            filteredCrew.map(c => (
                                                 <div
                                                     key={c.id}
                                                     className="flex items-center gap-3 p-3 hover:bg-background rounded-md cursor-pointer transition-colors border bg-background"

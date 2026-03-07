@@ -8,7 +8,7 @@ from app.schemas.documents import (
     ManualCreate, ManualUpdate, ManualResponse, ManualType,
     FormTemplateCreate, FormTemplateUpdate, FormTemplateResponse, FormCategory,
     FormSubmissionCreate, FormSubmissionUpdate, FormSubmissionResponse, FormStatus,
-    TriggerWorkRequest
+    TriggerWorkRequest, BulkDeleteRequest
 )
 
 router = APIRouter(prefix="/documents", tags=["documents"])
@@ -51,6 +51,22 @@ async def get_manuals(
         docs = query.stream()
         manuals = [ManualResponse(id=doc.id, **doc.to_dict()) for doc in docs]
         return manuals
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@router.delete("/manuals/{manual_id}")
+async def delete_manual(
+    manual_id: str,
+    current_user: UserResponse = Depends(require_role([UserRole.STAFF, UserRole.MASTER]))
+):
+    """Delete a manual (Staff/Master only)"""
+    try:
+        doc_ref = db.collection('manuals').document(manual_id)
+        if not doc_ref.get().exists:
+            raise HTTPException(status_code=404, detail="Manual not found")
+        
+        doc_ref.delete()
+        return {"message": "Manual deleted successfully"}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -111,12 +127,44 @@ async def get_template(
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
+@router.delete("/templates/{template_id}")
+async def delete_template(
+    template_id: str,
+    current_user: UserResponse = Depends(require_role([UserRole.STAFF, UserRole.MASTER]))
+):
+    """Delete a form template (Staff only)"""
+    try:
+        doc_ref = db.collection('form_templates').document(template_id)
+        if not doc_ref.get().exists:
+            raise HTTPException(status_code=404, detail="Template not found")
+        
+        doc_ref.delete()
+        return {"message": "Template deleted successfully"}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@router.post("/templates/bulk-delete")
+async def bulk_delete_templates(
+    request: BulkDeleteRequest,
+    current_user: UserResponse = Depends(require_role([UserRole.STAFF, UserRole.MASTER]))
+):
+    """Delete multiple form templates (Staff only)"""
+    try:
+        batch = db.batch()
+        for t_id in request.template_ids:
+            doc_ref = db.collection('form_templates').document(t_id)
+            batch.delete(doc_ref)
+        batch.commit()
+        return {"message": f"Successfully deleted {len(request.template_ids)} templates"}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
 # --- FORM SUBMISSIONS (Layer 3) ---
 
 @router.post("/trigger-work", response_model=List[FormSubmissionResponse])
 async def trigger_work(
     request: TriggerWorkRequest,
-    current_user: UserResponse = Depends(require_role([UserRole.STAFF]))
+    current_user: UserResponse = Depends(require_role([UserRole.STAFF, UserRole.MASTER]))
 ):
     """Trigger work for a vessel: Generates submissions from templates (Staff only)"""
     try:
@@ -148,29 +196,23 @@ async def trigger_work(
         assignees = [] # List of {id, name}
         if request.assigned_crew_ids:
             # Fetch specific users
-            from app.database import user_service # Local import to avoid circular dep if any
+            from app.database import user_service
             for uid in request.assigned_crew_ids:
                 u = await user_service.get_user_by_id(uid)
                 if u:
                     assignees.append({"id": u.id, "name": u.name})
         elif request.assign_to_all_crew:
-             # Fetch all crew on ship
+             # Use the new specialized method to get users for this ship
              from app.database import user_service
-             all_users = await user_service.get_all_users()
-             # Filter manually (better if service had get_by_ship)
-             crew_members = [u for u in all_users if u.ship_id == request.vessel_id and u.role == UserRole.CREW]
+             crew_members = await user_service.get_users_by_ship(request.vessel_id)
+             # Filter for CREW role
+             crew_members = [u for u in crew_members if u.role == UserRole.CREW]
              for u in crew_members:
                  assignees.append({"id": u.id, "name": u.name})
         
-        # If no specific assignees, we default to "Vessel Assignment" (assignees=[None]) 
-        # meaning anyone on the ship can see/claim it? Or strictly 1 submission per vessel?
-        # Current logic was 1 per vessel. If assignees list is empty but we explicitly didn't ask for assignment, 
-        # we treat it as "Unassigned / Vessel Wide".
-        # However, if user selected "All Crew" and there are none, we might want to warn or do nothing? 
-        # Let's assume if assignees is empty AND (assign_to_all or specific_ids was requested), we do nothing?
-        # No, let's treat generic as "Unassigned".
-        if not assignees and not request.assign_to_all_crew and not request.assigned_crew_ids:
-            assignees.append(None) # One unassigned submission
+        # Fallback: If no assignees found, create one "Unassigned" submission for the vessel.
+        if not assignees:
+            assignees.append(None)
 
         created_submissions = []
         now = datetime.utcnow()
@@ -346,5 +388,30 @@ async def get_submissions(
         
         return submissions
 
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@router.delete("/submissions/{submission_id}")
+async def delete_submission(
+    submission_id: str,
+    current_user: UserResponse = Depends(require_role([UserRole.STAFF, UserRole.MASTER]))
+):
+    """Delete a form submission (Staff or Master)"""
+    try:
+        doc_ref = db.collection('form_submissions').document(submission_id)
+        doc = doc_ref.get()
+        if not doc.exists:
+            raise HTTPException(status_code=404, detail="Submission not found")
+            
+        # Optional: Additional check to ensure Master only deletes for their ship
+        if current_user.role == UserRole.MASTER and current_user.ship_id:
+            data = doc.to_dict()
+            if data.get('vessel_id') != current_user.ship_id:
+                raise HTTPException(status_code=403, detail="Master can only delete submissions for their assigned vessel")
+
+        doc_ref.delete()
+        return {"message": "Submission deleted successfully"}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))

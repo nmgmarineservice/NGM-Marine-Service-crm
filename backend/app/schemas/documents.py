@@ -85,6 +85,8 @@ class FormTemplateCreate(BaseModel):
     manual_reference_id: Optional[str] = None # Link to source manual
     scheduled: ScheduleFrequency = ScheduleFrequency.WEEKLY
     role: AssignedRole = AssignedRole.CREW
+    spreadsheet_data: Optional[Dict[str, Any]] = None
+    document_data: Optional[Dict[str, Any]] = None
 
 class FormTemplateUpdate(BaseModel):
     name: Optional[str] = None
@@ -95,6 +97,8 @@ class FormTemplateUpdate(BaseModel):
     manual_reference_id: Optional[str] = None
     scheduled: Optional[ScheduleFrequency] = None
     role: Optional[AssignedRole] = None
+    spreadsheet_data: Optional[Dict[str, Any]] = None
+    document_data: Optional[Dict[str, Any]] = None
 
 class FormTemplateResponse(BaseModel):
     id: str
@@ -106,6 +110,8 @@ class FormTemplateResponse(BaseModel):
     manual_reference_id: Optional[str] = None
     scheduled: ScheduleFrequency
     role: AssignedRole
+    spreadsheet_data: Optional[Dict[str, Any]] = None
+    document_data: Optional[Dict[str, Any]] = None
     created_by: str
     created_at: datetime
     updated_at: datetime
@@ -156,3 +162,6 @@ class TriggerWorkRequest(BaseModel):
     template_ids: Optional[List[str]] = None # Specific templates
     assigned_crew_ids: Optional[List[str]] = None # Specific crew members
     assign_to_all_crew: bool = False # Flag to assign to all crew on ship
+
+class BulkDeleteRequest(BaseModel):
+    template_ids: List[str]

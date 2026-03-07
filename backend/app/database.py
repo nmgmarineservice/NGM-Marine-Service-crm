@@ -155,6 +155,38 @@ class UserService(DatabaseService):
         
         return users
 
+    async def get_users_by_ship(self, ship_id: str) -> List[UserResponse]:
+        """Get all users for a specific ship using Firestore query"""
+        query = self.db.collection(self.collection_name).where("ship_id", "==", ship_id)
+        docs = query.stream()
+        
+        users = []
+        for doc in docs:
+            user_data = doc.to_dict()
+            user = User.from_dict(user_data, doc.id)
+            
+            # Since we are filtering by ship_id, we can potentially optimize ship_name lookup
+            # but for now let's keep it simple and consistent.
+            ship_name = None
+            ship_doc = self.db.collection("ships").document(ship_id).get()
+            if ship_doc.exists:
+                ship_name = ship_doc.to_dict().get('name')
+            
+            users.append(UserResponse(
+                id=user.id,
+                email=user.email,
+                name=user.name,
+                role=user.role,
+                ship_id=user.ship_id,
+                ship_name=ship_name,
+                phone=user.phone,
+                position=user.position,
+                active=user.active,
+                created_at=user.created_at,
+                updated_at=user.updated_at
+            ))
+        return users
+
     async def update_user(self, user_id: str, user_data: UserUpdate) -> Optional[UserResponse]:
         """Update user information"""
         doc_ref = self.db.collection(self.collection_name).document(user_id)

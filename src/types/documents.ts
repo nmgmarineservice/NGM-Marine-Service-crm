@@ -39,7 +39,7 @@ export enum AssignedRole {
 export interface FormField {
     id: string;
     label: string;
-    type: 'text' | 'number' | 'date' | 'boolean' | 'select' | 'signature' | 'photo' | 'table';
+    type: 'text' | 'number' | 'date' | 'boolean' | 'select' | 'signature' | 'photo' | 'table' | 'grid';
     required: boolean;
     options?: string[];
     default_value?: any;
@@ -64,6 +64,8 @@ export interface FormTemplate {
     category: FormCategory;
     description?: string;
     fields: FormField[];
+    spreadsheet_data?: any;
+    document_data?: any;
     approval_required: boolean;
     manual_reference_id?: string;
     scheduled: ScheduleFrequency;
