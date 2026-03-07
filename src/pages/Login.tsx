@@ -2,8 +2,10 @@ import { useState } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { auth } from "../firebase";
+import { useTranslation } from "react-i18next";
 
 export default function Login() {
+  const { t } = useTranslation();
   const { login } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -47,10 +49,10 @@ export default function Login() {
         <div style={{ textAlign: "center", marginBottom: 24, display: "flex", flexDirection: "column", alignItems: "center" }}>
           <img src="/nmg-logo.jpeg" alt="NMG Marine" style={{ height: 80, marginBottom: 16 }} />
           <h2 style={{ color: "white", margin: "10px 0 5px 0" }}>
-            {isSignUp ? "Create Account" : "Sign In"}
+            {isSignUp ? t('Sign Up') : t('login_button')}
           </h2>
           <p style={{ color: "#9CA3AF", fontSize: "14px", margin: 0 }}>
-            NMG Marine Management System
+            {t('login_title')}
           </p>
         </div>
 
@@ -65,7 +67,7 @@ export default function Login() {
         )}
 
         <input
-          placeholder="Email"
+          placeholder={t('email_label')}
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
@@ -74,7 +76,7 @@ export default function Login() {
         />
 
         <input
-          placeholder="Password"
+          placeholder={t('password_label')}
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
@@ -126,7 +128,7 @@ export default function Login() {
             cursor: loading ? "not-allowed" : "pointer"
           }}
         >
-          {loading ? "Processing..." : (isSignUp ? "Sign Up" : "Sign In")}
+          {loading ? t('Processing...') : (isSignUp ? t('Sign Up') : t('login_button'))}
         </button>
 
         <div style={{ textAlign: "center", marginTop: 20 }}>
