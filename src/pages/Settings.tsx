@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Users, Shield, FileText, Loader2 } from 'lucide-react';
+import { Users, Shield, FileText, Loader2, Globe } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
@@ -14,6 +15,7 @@ import { userApi, UserResponse } from '../services/api';
 import { toast } from 'sonner';
 
 export function Settings() {
+  const { t, i18n } = useTranslation();
   const { user: currentUser } = useAuth();
   const [users, setUsers] = useState<UserResponse[]>([]);
   const [loading, setLoading] = useState(true);
@@ -106,12 +108,18 @@ export function Settings() {
       setSaving(false);
     }
   };
+
+  const handleLanguageChange = (value: string) => {
+    i18n.changeLanguage(value);
+    toast.success(`Language changed to ${value === 'en' ? 'English' : value === 'es' ? 'Spanish' : value === 'hi' ? 'Hindi' : 'German'}`);
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h2 className="text-foreground">Settings</h2>
-        <p className="text-sm text-muted-foreground">Manage system settings, users, and configurations</p>
+        <h2 className="text-foreground">{t('settings_title')}</h2>
+        <p className="text-sm text-muted-foreground">{t('settings_subtitle')}</p>
       </div>
 
       {/* Settings Tabs */}
@@ -119,23 +127,27 @@ export function Settings() {
         <TabsList className="bg-card border border-border">
           <TabsTrigger value="users" className="gap-2">
             <Users className="w-4 h-4" />
-            User Management
+            {t('tab_user_management')}
+          </TabsTrigger>
+          <TabsTrigger value="preferences" className="gap-2">
+            <Globe className="w-4 h-4" />
+            {t('tab_preferences')}
           </TabsTrigger>
           <TabsTrigger value="privacy" className="gap-2">
             <Shield className="w-4 h-4" />
-            Privacy Policy
+            {t('tab_privacy')}
           </TabsTrigger>
           <TabsTrigger value="terms" className="gap-2">
             <FileText className="w-4 h-4" />
-            Terms & Conditions
+            {t('tab_terms')}
           </TabsTrigger>
         </TabsList>
 
         {/* User Management Tab */}
         <TabsContent value="users" className="space-y-6">
           <div>
-            <h3 className="text-foreground">User Management</h3>
-            <p className="text-sm text-muted-foreground">Manage user accounts and permissions</p>
+            <h3 className="text-foreground">{t('tab_user_management')}</h3>
+            <p className="text-sm text-muted-foreground">{t('user_management_subtitle')}</p>
           </div>
 
           <Card>
@@ -181,6 +193,37 @@ export function Settings() {
                   </TableBody>
                 </Table>
               )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Preferences Tab */}
+        <TabsContent value="preferences" className="space-y-6">
+          <div>
+            <h3 className="text-foreground">{t('preference_title')}</h3>
+            <p className="text-sm text-muted-foreground">{t('preference_subtitle')}</p>
+          </div>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>{t('language_settings')}</CardTitle>
+              <CardDescription>{t('language_select_description')}</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2 max-w-xs">
+                <Label htmlFor="language">{t('language_select_label')}</Label>
+                <Select value={i18n.language} onValueChange={handleLanguageChange}>
+                  <SelectTrigger id="language">
+                    <SelectValue placeholder="Select Language" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="en">English</SelectItem>
+                    <SelectItem value="es">Español (Spanish)</SelectItem>
+                    <SelectItem value="hi">हिन्दी (Hindi)</SelectItem>
+                    <SelectItem value="de">Deutsch (German)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>

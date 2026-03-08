@@ -48,7 +48,19 @@ const resources = {
             "menu_onboarding": "Onboarding",
             "menu_dg_communication": "DG Communication",
             "menu_invoices": "Invoices",
-            "menu_settings": "Settings"
+            "menu_settings": "Settings",
+            "settings_title": "Settings",
+            "settings_subtitle": "Manage system settings, users, and configurations",
+            "tab_user_management": "User Management",
+            "tab_preferences": "Preferences",
+            "tab_privacy": "Privacy Policy",
+            "tab_terms": "Terms & Conditions",
+            "preference_title": "App Preferences",
+            "preference_subtitle": "Customize your application experience",
+            "language_settings": "Language Settings",
+            "language_select_label": "Interface Language",
+            "language_select_description": "Select your preferred language for the interface",
+            "user_management_subtitle": "Manage user accounts and permissions"
         }
     },
     es: {
@@ -95,7 +107,19 @@ const resources = {
             "menu_onboarding": "Incorporación",
             "menu_dg_communication": "Comunicación DG",
             "menu_invoices": "Facturas",
-            "menu_settings": "Configuración"
+            "menu_settings": "Configuración",
+            "settings_title": "Configuración",
+            "settings_subtitle": "Administrar configuraciones del sistema, usuarios y configuraciones",
+            "tab_user_management": "Gestión de usuarios",
+            "tab_preferences": "Preferencias",
+            "tab_privacy": "Política de privacidad",
+            "tab_terms": "Términos y condiciones",
+            "preference_title": "Preferencias de la aplicación",
+            "preference_subtitle": "Personaliza tu experiencia con la aplicación",
+            "language_settings": "Configuración de idioma",
+            "language_select_label": "Idioma de la interfaz",
+            "language_select_description": "Selecciona tu idioma preferido para la interfaz",
+            "user_management_subtitle": "Administrar cuentas de usuario y permisos"
         }
     },
     hi: {
@@ -142,7 +166,19 @@ const resources = {
             "menu_onboarding": "ऑनबोर्डिंग",
             "menu_dg_communication": "डीजी संचार",
             "menu_invoices": "चालान",
-            "menu_settings": "सेटिंग्स"
+            "menu_settings": "सेटिंग्स",
+            "settings_title": "सेटिंग्स",
+            "settings_subtitle": "सिस्टम सेटिंग्स, उपयोगकर्ताओं और कॉन्फ़िगरेशन को प्रबंधित करें",
+            "tab_user_management": "उपयोगकर्ता प्रबंधन",
+            "tab_preferences": "वरीयताएँ",
+            "tab_privacy": "गोपनीयता नीति",
+            "tab_terms": "नियम और शर्तें",
+            "preference_title": "ऐप वरीयताएँ",
+            "preference_subtitle": "अपने एप्लिकेशन अनुभव को अनुकूलित करें",
+            "language_settings": "भाषा सेटिंग्स",
+            "language_select_label": "इंटरफ़ेस भाषा",
+            "language_select_description": "इंटरफ़ेस के लिए अपनी पसंदीदा भाषा चुनें",
+            "user_management_subtitle": "उपयोगकर्ता खाते और अनुमतियाँ प्रबंधित करें"
         }
     },
     de: {
@@ -189,7 +225,19 @@ const resources = {
             "menu_onboarding": "Onboarding",
             "menu_dg_communication": "DG Kommunikation",
             "menu_invoices": "Rechnungen",
-            "menu_settings": "Einstellungen"
+            "menu_settings": "Einstellungen",
+            "settings_title": "Einstellungen",
+            "settings_subtitle": "Systemeinstellungen, Benutzer und Konfigurationen verwalten",
+            "tab_user_management": "Benutzerverwaltung",
+            "tab_preferences": "Einstellungen",
+            "tab_privacy": "Datenschutzrichtlinie",
+            "tab_terms": "Allgemeine Geschäftsbedingungen",
+            "preference_title": "App-Einstellungen",
+            "preference_subtitle": "Passen Sie Ihr Anwendungserlebnis an",
+            "language_settings": "Spracheinstellungen",
+            "language_select_label": "Oberflächensprache",
+            "language_select_description": "Wählen Sie Ihre bevorzugte Sprache für die Benutzeroberfläche",
+            "user_management_subtitle": "Benutzerkonten und Berechtigungen verwalten"
         }
     }
 };
