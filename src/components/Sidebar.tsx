@@ -22,6 +22,7 @@ import {
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Logo } from './Logo';
+import { useTranslation } from 'react-i18next';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -30,31 +31,32 @@ interface SidebarProps {
 
 const menuItems = [
   // Master: All tabs, Staff: Most tabs (no Vessels, PMS), Crew: Limited tabs
-  { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['master', 'crew', 'staff'] },
+  { path: '/dashboard', label: 'menu_dashboard', icon: LayoutDashboard, roles: ['master', 'crew', 'staff'] },
   // Documents Section
-  { path: '/documents/manuals', label: 'Manuals', icon: BookOpen, roles: ['master', 'staff', 'crew'] },
-  { path: '/documents/templates', label: 'Form Templates', icon: FilePlus, roles: ['master', 'staff'] },
-  { path: '/documents/submissions', label: 'Submissions', icon: ClipboardCheck, roles: ['master', 'staff', 'crew'] },
+  { path: '/documents/manuals', label: 'menu_manuals', icon: BookOpen, roles: ['master', 'staff', 'crew'] },
+  { path: '/documents/templates', label: 'menu_form_templates', icon: FilePlus, roles: ['master', 'staff'] },
+  { path: '/documents/submissions', label: 'menu_submissions', icon: ClipboardCheck, roles: ['master', 'staff', 'crew'] },
 
   // Operational
-  { path: '/pms', label: 'PMS', icon: Wrench, roles: ['master', 'staff', 'crew'] },
-  { path: '/crew-logs', label: 'Daily Work Logs', icon: ClipboardList, roles: ['master', 'crew', 'staff'] },
-  { path: '/emergency', label: 'Emergency Preparedness', icon: AlertTriangle, roles: ['master', 'staff'] },
-  { path: '/incidents', label: 'Incident Reporting', icon: FileCheck, roles: ['master', 'crew', 'staff'] },
-  { path: '/audits', label: 'Audits & Reviews', icon: FileCheck, roles: ['master', 'staff'] },
-  { path: '/cargo', label: 'Cargo Operations', icon: Package, roles: ['master', 'crew', 'staff'] },
-  { path: '/clients', label: 'Clients', icon: Users, roles: ['master', 'staff'] },
-  { path: '/vessels', label: 'Vessels', icon: Ship, roles: ['master'] },
-  { path: '/staff', label: 'Staff', icon: UserCog, roles: ['master'] },
-  { path: '/crew', label: 'Crew', icon: UsersRound, roles: ['master', 'staff'] },
-  { path: '/recruitment', label: 'Recruitment', icon: UserPlus, roles: ['master', 'staff'] },
-  { path: '/onboarding', label: 'Onboarding', icon: ClipboardCheck, roles: ['crew'] },
-  { path: '/dg-communication', label: 'DG Communication', icon: Radio, roles: ['master', 'staff'] },
-  { path: '/invoices', label: 'Invoices', icon: Receipt, roles: ['master', 'staff'] },
-  { path: '/settings', label: 'Settings', icon: Settings, roles: ['master', 'crew', 'staff'] },
+  { path: '/pms', label: 'menu_pms', icon: Wrench, roles: ['master', 'staff', 'crew'] },
+  { path: '/crew-logs', label: 'menu_daily_work_logs', icon: ClipboardList, roles: ['master', 'crew', 'staff'] },
+  { path: '/emergency', label: 'menu_emergency', icon: AlertTriangle, roles: ['master', 'staff'] },
+  { path: '/incidents', label: 'menu_incidents', icon: FileCheck, roles: ['master', 'crew', 'staff'] },
+  { path: '/audits', label: 'menu_audits', icon: FileCheck, roles: ['master', 'staff'] },
+  { path: '/cargo', label: 'menu_cargo', icon: Package, roles: ['master', 'crew', 'staff'] },
+  { path: '/clients', label: 'menu_clients', icon: Users, roles: ['master', 'staff'] },
+  { path: '/vessels', label: 'menu_vessels', icon: Ship, roles: ['master'] },
+  { path: '/staff', label: 'menu_staff', icon: UserCog, roles: ['master'] },
+  { path: '/crew', label: 'menu_crew', icon: UsersRound, roles: ['master', 'staff'] },
+  { path: '/recruitment', label: 'menu_recruitment', icon: UserPlus, roles: ['master', 'staff'] },
+  { path: '/onboarding', label: 'menu_onboarding', icon: ClipboardCheck, roles: ['crew'] },
+  { path: '/dg-communication', label: 'menu_dg_communication', icon: Radio, roles: ['master', 'staff'] },
+  { path: '/invoices', label: 'menu_invoices', icon: Receipt, roles: ['master', 'staff'] },
+  { path: '/settings', label: 'menu_settings', icon: Settings, roles: ['master', 'crew', 'staff'] },
 ];
 
 export function Sidebar({ isOpen, onClose }: SidebarProps) {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const location = useLocation();
 
@@ -107,7 +109,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                 onClick={onClose}
               >
                 <Icon className="w-5 h-5" />
-                <span>{item.label}</span>
+                <span>{t(item.label)}</span>
               </Link>
             );
           })}
