@@ -247,6 +247,7 @@ i18n
     .use(initReactI18next)
     .init({
         resources,
+        lng: 'en',
         fallbackLng: 'en',
         interpolation: {
             escapeValue: false // react already safes from xss
@@ -257,7 +258,7 @@ i18n
         }
     });
 
-// Optional: Custom function to force switch by country if detected via external API
+/*
 export const detectLocationAndSetLanguage = async () => {
     try {
         const response = await fetch('https://ipapi.co/json/');
@@ -283,5 +284,6 @@ export const detectLocationAndSetLanguage = async () => {
         console.error("Location detection failed", err);
     }
 };
+*/
 
 export default i18n;
