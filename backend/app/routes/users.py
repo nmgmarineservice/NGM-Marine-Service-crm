@@ -17,7 +17,7 @@ async def create_user(
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-@router.get("/me", response_model=UserResponse)
+@router.get("/me/", response_model=UserResponse)
 async def get_current_user_info(current_user: UserResponse = Depends(get_current_user)):
     """Get current user information"""
     return current_user
@@ -63,7 +63,7 @@ async def update_user(
         raise HTTPException(status_code=404, detail="User not found")
     return user
 
-@router.get("/ship/{ship_id}", response_model=List[UserResponse])
+@router.get("/ship/{ship_id}/", response_model=List[UserResponse])
 async def get_users_by_ship(
     ship_id: str,
     current_user: UserResponse = Depends(require_staff_or_master)

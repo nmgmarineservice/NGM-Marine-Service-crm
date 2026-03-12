@@ -69,18 +69,18 @@ export const documentService = {
         const queryParams = new URLSearchParams();
         if (type) queryParams.append('type', type);
         const qs = queryParams.toString();
-        return apiRequest<Manual[]>(`/documents/manuals${qs ? `?${qs}` : ''}`);
+        return apiRequest<Manual[]>(`/documents/manuals/${qs ? `?${qs}` : ''}`);
     },
 
     createManual: async (data: any) => {
-        return apiRequest<Manual>('/documents/manuals', {
+        return apiRequest<Manual>('/documents/manuals/', {
             method: 'POST',
             body: JSON.stringify(data)
         });
     },
 
     deleteManual: async (id: string) => {
-        return apiRequest<any>(`/documents/manuals/${id}`, {
+        return apiRequest<any>(`/documents/manuals/${id}/`, {
             method: 'DELETE'
         });
     },
@@ -90,29 +90,29 @@ export const documentService = {
         const queryParams = new URLSearchParams();
         if (category) queryParams.append('category', category);
         const qs = queryParams.toString();
-        return apiRequest<FormTemplate[]>(`/documents/templates${qs ? `?${qs}` : ''}`);
+        return apiRequest<FormTemplate[]>(`/documents/templates/${qs ? `?${qs}` : ''}`);
     },
 
     getTemplate: async (id: string) => {
-        return apiRequest<FormTemplate>(`/documents/templates/${id}`);
+        return apiRequest<FormTemplate>(`/documents/templates/${id}/`);
     },
 
     createTemplate: async (data: Omit<FormTemplate, 'id' | 'created_by' | 'created_at' | 'updated_at'>) => {
-        return apiRequest<FormTemplate>('/documents/templates', {
+        return apiRequest<FormTemplate>('/documents/templates/', {
             method: 'POST',
             body: JSON.stringify(data)
         });
     },
 
     updateTemplate: async (id: string, data: Partial<FormTemplate>) => {
-        return apiRequest<FormTemplate>(`/documents/templates/${id}`, {
+        return apiRequest<FormTemplate>(`/documents/templates/${id}/`, {
             method: 'PUT',
             body: JSON.stringify(data)
         });
     },
 
     deleteTemplate: async (id: string) => {
-        return apiRequest<any>(`/documents/templates/${id}`, {
+        return apiRequest<any>(`/documents/templates/${id}/`, {
             method: 'DELETE'
         });
     },
@@ -131,31 +131,31 @@ export const documentService = {
         if (params?.status) queryParams.append('status', params.status);
         if (params?.template_id) queryParams.append('template_id', params.template_id);
         const qs = queryParams.toString();
-        return apiRequest<FormSubmission[]>(`/documents/submissions${qs ? `?${qs}` : ''}`);
+        return apiRequest<FormSubmission[]>(`/documents/submissions/${qs ? `?${qs}` : ''}`);
     },
 
     triggerWork: async (data: TriggerWorkRequest) => {
-        return apiRequest<FormSubmission[]>('/documents/trigger-work', {
+        return apiRequest<FormSubmission[]>('/documents/trigger-work/', {
             method: 'POST',
             body: JSON.stringify(data)
         });
     },
 
     updateSubmission: async (id: string, data: Partial<FormSubmission>) => {
-        return apiRequest<FormSubmission>(`/documents/submissions/${id}`, {
+        return apiRequest<FormSubmission>(`/documents/submissions/${id}/`, {
             method: 'PUT',
             body: JSON.stringify(data)
         });
     },
 
     approveSubmission: async (id: string) => {
-        return apiRequest<FormSubmission>(`/documents/submissions/${id}/approve`, {
+        return apiRequest<FormSubmission>(`/documents/submissions/${id}/approve/`, {
             method: 'POST'
         });
     },
 
     deleteSubmission: async (id: string) => {
-        return apiRequest<any>(`/documents/submissions/${id}`, {
+        return apiRequest<any>(`/documents/submissions/${id}/`, {
             method: 'DELETE'
         });
     },

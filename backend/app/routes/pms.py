@@ -192,7 +192,7 @@ async def update_pms_task(
         print(f"❌ Error updating task: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to update task: {str(e)}")
 
-@router.post("/{task_id}/approve", response_model=PMSTaskResponse)
+@router.post("/{task_id}/approve/", response_model=PMSTaskResponse)
 async def approve_pms_task(
     task_id: str,
     current_user: UserResponse = Depends(require_master)
@@ -217,7 +217,7 @@ async def approve_pms_task(
     
     return updated_task
 
-@router.post("/{task_id}/reject", response_model=PMSTaskResponse)
+@router.post("/{task_id}/reject/", response_model=PMSTaskResponse)
 async def reject_pms_task(
     task_id: str,
     current_user: UserResponse = Depends(require_master)
@@ -260,7 +260,7 @@ async def delete_pms_task(
     
     return {"message": "Task deleted successfully"}
 
-@router.get("/ship/{ship_id}/stats")
+@router.get("/ship/{ship_id}/stats/")
 async def get_ship_pms_stats(
     ship_id: str,
     current_user: UserResponse = Depends(get_current_user)

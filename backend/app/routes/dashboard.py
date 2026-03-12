@@ -12,7 +12,7 @@ def get_user_ship_filter(current_user: UserResponse) -> Optional[str]:
         return None  # Master sees all
     return current_user.ship_id  # Staff and Crew see only assigned vessel
 
-@router.get("/fleet-summary")
+@router.get("/fleet-summary/")
 async def get_fleet_summary(current_user: UserResponse = Depends(get_current_user)):
     """Get fleet overview summary - filtered by role"""
     try:
@@ -79,7 +79,7 @@ async def get_fleet_summary(current_user: UserResponse = Depends(get_current_use
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.get("/my-tasks")
+@router.get("/my-tasks/")
 async def get_my_tasks(current_user: UserResponse = Depends(get_current_user)):
     """Get current user's tasks and assignments"""
     if current_user.role == UserRole.CREW:
@@ -128,7 +128,7 @@ async def get_my_tasks(current_user: UserResponse = Depends(get_current_user)):
         # Master gets fleet summary
         return await get_fleet_summary(current_user)
 
-@router.get("/notifications")
+@router.get("/notifications/")
 async def get_user_notifications(current_user: UserResponse = Depends(get_current_user)):
     """Get notifications for current user"""
     # Mock notifications for now

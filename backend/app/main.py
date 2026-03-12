@@ -4,6 +4,7 @@ from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 import os
 from dotenv import load_dotenv
+from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 
 # Import all routes
 from app.routes.users import router as users_router
@@ -60,17 +61,30 @@ app = FastAPI(
     lifespan=lifespan
 )
 
+# Trust proxy headers (X-Forwarded-For, X-Forwarded-Proto)
+app.add_middleware(ProxyHeadersMiddleware, trusted_hosts="*")
+
 # CORS configuration
 backend_cors_origins = os.getenv("BACKEND_CORS_ORIGINS")
+origins = [
+    "https://www.nmgmarineservice.in",
+    "https://nmgmarineservice.in",
+    "https://ngm-marine-service-crm-production-4a54.up.railway.app",
+    "http://localhost:5173",
+    "http://localhost:3000",
+]
+
 if backend_cors_origins:
     try:
         import json
-        origins = json.loads(backend_cors_origins)
+        extra_origins = json.loads(backend_cors_origins)
+        origins.extend(extra_origins)
     except Exception:
-        origins = [origin.strip() for origin in backend_cors_origins.split(",")]
-else:
-    # Default for production/Railway: Allow all or specific railway domains
-    origins = ["*"]
+        extra_origins = [origin.strip() for origin in backend_cors_origins.split(",")]
+        origins.extend(extra_origins)
+
+# Remove duplicates
+origins = list(set(origins))
 
 # In production, check for Railway environment
 is_railway = os.getenv("RAILWAY_STATIC_URL") or os.getenv("RAILWAY_PUBLIC_DOMAIN")
@@ -80,11 +94,7 @@ if is_railway:
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
-    # Browsers block "*" origins if allow_credentials is True
-    # If we need credentials (like Firebase tokens in some flows), origins cannot be "*"
-    # But for Bearer tokens in headers, "*" is usually fine if allow_credentials is False.
-    # To be safe for auth, we'll allow credentials and handle the origin properly.
-    allow_credentials=True if origins != ["*"] else False,
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
     expose_headers=["*"],

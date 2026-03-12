@@ -33,7 +33,7 @@ async def get_invoices(
     # Master can see all invoices
     return await invoice_service.get_all_invoices(ship_id=ship_id, status=status)
 
-@router.get("/stats")
+@router.get("/stats/")
 async def get_invoice_stats(
     ship_id: Optional[str] = Query(None),
     current_user: UserResponse = Depends(get_current_user)
@@ -83,7 +83,7 @@ async def update_invoice(
     
     return updated
 
-@router.post("/{invoice_id}/submit", response_model=InvoiceResponse)
+@router.post("/{invoice_id}/submit/", response_model=InvoiceResponse)
 async def submit_invoice(
     invoice_id: str,
     current_user: UserResponse = Depends(require_staff_or_master)
@@ -102,7 +102,7 @@ async def submit_invoice(
     
     return updated
 
-@router.post("/{invoice_id}/approve", response_model=InvoiceResponse)
+@router.post("/{invoice_id}/approve/", response_model=InvoiceResponse)
 async def approve_invoice(
     invoice_id: str,
     notes: Optional[str] = None,
@@ -122,7 +122,7 @@ async def approve_invoice(
     
     return updated
 
-@router.post("/{invoice_id}/reject", response_model=InvoiceResponse)
+@router.post("/{invoice_id}/reject/", response_model=InvoiceResponse)
 async def reject_invoice(
     invoice_id: str,
     notes: Optional[str] = None,
@@ -142,7 +142,7 @@ async def reject_invoice(
     
     return updated
 
-@router.post("/{invoice_id}/mark-paid", response_model=InvoiceResponse)
+@router.post("/{invoice_id}/mark-paid/", response_model=InvoiceResponse)
 async def mark_invoice_paid(
     invoice_id: str,
     current_user: UserResponse = Depends(require_staff_or_master)

@@ -64,13 +64,13 @@ const apiRequest = async <T>(
 
 // User API
 export const userApi = {
-  getCurrentUser: () => apiRequest<UserResponse>('/users/me'),
+  getCurrentUser: () => apiRequest<UserResponse>('/users/me/'),
 
   getAllUsers: (skip = 0, limit = 100) =>
-    apiRequest<UserResponse[]>(`/users?skip=${skip}&limit=${limit}`),
+    apiRequest<UserResponse[]>(`/users/?skip=${skip}&limit=${limit}`),
 
   getUserById: (userId: string) =>
-    apiRequest<UserResponse>(`/users/${userId}`),
+    apiRequest<UserResponse>(`/users/${userId}/`),
 
   createUser: (userData: UserCreate) =>
     apiRequest<UserResponse>('/users', {
@@ -95,25 +95,25 @@ export const userApi = {
 
 // Ships API
 export const shipsApi = {
-  getAllShips: () => apiRequest<ShipResponse[]>('/ships'),
+  getAllShips: () => apiRequest<ShipResponse[]>('/ships/'),
 
   getShipById: (shipId: string) =>
-    apiRequest<ShipResponse>(`/ships/${shipId}`),
+    apiRequest<ShipResponse>(`/ships/${shipId}/`),
 
   createShip: (shipData: ShipCreate) =>
-    apiRequest<ShipResponse>('/ships', {
+    apiRequest<ShipResponse>('/ships/', {
       method: 'POST',
       body: JSON.stringify(shipData),
     }),
 
   updateShip: (shipId: string, shipData: ShipUpdate) =>
-    apiRequest<ShipResponse>(`/ships/${shipId}`, {
+    apiRequest<ShipResponse>(`/ships/${shipId}/`, {
       method: 'PUT',
       body: JSON.stringify(shipData),
     }),
 
   deleteShip: (shipId: string) =>
-    apiRequest<{ message: string }>(`/ships/${shipId}`, {
+    apiRequest<{ message: string }>(`/ships/${shipId}/`, {
       method: 'DELETE',
     }),
 };
@@ -130,37 +130,37 @@ export const pmsApi = {
   },
 
   getTaskById: (taskId: string) =>
-    apiRequest<PMSTaskResponse>(`/pms/${taskId}`),
+    apiRequest<PMSTaskResponse>(`/pms/${taskId}/`),
 
   createTask: (taskData: PMSTaskCreate) =>
-    apiRequest<PMSTaskResponse>('/pms', {
+    apiRequest<PMSTaskResponse>('/pms/', {
       method: 'POST',
       body: JSON.stringify(taskData),
     }),
 
   updateTask: (taskId: string, taskData: PMSTaskUpdate) =>
-    apiRequest<PMSTaskResponse>(`/pms/${taskId}`, {
+    apiRequest<PMSTaskResponse>(`/pms/${taskId}/`, {
       method: 'PUT',
       body: JSON.stringify(taskData),
     }),
 
   approveTask: (taskId: string, notes?: string) =>
-    apiRequest<PMSTaskResponse>(`/pms/${taskId}/approve`, {
+    apiRequest<PMSTaskResponse>(`/pms/${taskId}/approve/`, {
       method: 'POST',
       body: JSON.stringify({ approval_notes: notes }),
     }),
 
   rejectTask: (taskId: string, notes: string) =>
-    apiRequest<PMSTaskResponse>(`/pms/${taskId}/reject`, {
+    apiRequest<PMSTaskResponse>(`/pms/${taskId}/reject/`, {
       method: 'POST',
       body: JSON.stringify({ rejection_notes: notes }),
     }),
 
   getShipStats: (shipId: string) =>
-    apiRequest<PMSStats>(`/pms/ship/${shipId}/stats`),
+    apiRequest<PMSStats>(`/pms/ship/${shipId}/stats/`),
 
   deleteTask: (taskId: string) =>
-    apiRequest<{ message: string }>(`/pms/${taskId}`, {
+    apiRequest<{ message: string }>(`/pms/${taskId}/`, {
       method: 'DELETE',
     }),
 };
@@ -168,13 +168,13 @@ export const pmsApi = {
 // Dashboard API
 export const dashboardApi = {
   getFleetSummary: () =>
-    apiRequest<FleetSummary>('/dashboard/fleet-summary'),
+    apiRequest<FleetSummary>('/dashboard/fleet-summary/'),
 
   getMyTasks: () =>
-    apiRequest<MyTasksResponse>('/dashboard/my-tasks'),
+    apiRequest<MyTasksResponse>('/dashboard/my-tasks/'),
 
   getNotifications: () =>
-    apiRequest<NotificationsResponse>('/dashboard/notifications'),
+    apiRequest<NotificationsResponse>('/dashboard/notifications/'),
 };
 
 export interface WorkLogUpdate {
@@ -196,32 +196,32 @@ export const worklogsApi = {
   },
 
   getLogById: (logId: string) =>
-    apiRequest<WorkLogResponse>(`/worklogs/${logId}`),
+    apiRequest<WorkLogResponse>(`/worklogs/${logId}/`),
 
   createLog: (logData: WorkLogCreate) =>
-    apiRequest<WorkLogResponse>('/worklogs', {
+    apiRequest<WorkLogResponse>('/worklogs/', {
       method: 'POST',
       body: JSON.stringify(logData),
     }),
 
   updateLog: (logId: string, logData: WorkLogUpdate) =>
-    apiRequest<WorkLogResponse>(`/worklogs/${logId}`, {
+    apiRequest<WorkLogResponse>(`/worklogs/${logId}/`, {
       method: 'PUT',
       body: JSON.stringify(logData),
     }),
 
   deleteLog: (logId: string) =>
-    apiRequest<{ message: string }>(`/worklogs/${logId}`, {
+    apiRequest<{ message: string }>(`/worklogs/${logId}/`, {
       method: 'DELETE',
     }),
 
   approveLog: (logId: string) =>
-    apiRequest<WorkLogResponse>(`/worklogs/${logId}/approve`, {
+    apiRequest<WorkLogResponse>(`/worklogs/${logId}/approve/`, {
       method: 'POST',
     }),
 
   rejectLog: (logId: string) =>
-    apiRequest<WorkLogResponse>(`/worklogs/${logId}/reject`, {
+    apiRequest<WorkLogResponse>(`/worklogs/${logId}/reject/`, {
       method: 'POST',
     }),
 };
@@ -532,16 +532,16 @@ export const incidentsApi = {
     apiRequest<IncidentResponse[]>(`/incidents${shipId ? `?ship_id=${shipId}` : ''}`),
 
   getById: (incidentId: string) =>
-    apiRequest<IncidentResponse>(`/incidents/${incidentId}`),
+    apiRequest<IncidentResponse>(`/incidents/${incidentId}/`),
 
   create: (data: IncidentCreate) =>
-    apiRequest<IncidentResponse>('/incidents', {
+    apiRequest<IncidentResponse>('/incidents/', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
 
   update: (incidentId: string, data: IncidentUpdate) =>
-    apiRequest<IncidentResponse>(`/incidents/${incidentId}`, {
+    apiRequest<IncidentResponse>(`/incidents/${incidentId}/`, {
       method: 'PUT',
       body: JSON.stringify(data),
     }),
@@ -583,16 +583,16 @@ export const auditsApi = {
     apiRequest<AuditResponse[]>(`/audits${shipId ? `?ship_id=${shipId}` : ''}`),
 
   getById: (auditId: string) =>
-    apiRequest<AuditResponse>(`/audits/${auditId}`),
+    apiRequest<AuditResponse>(`/audits/${auditId}/`),
 
   create: (data: AuditCreate) =>
-    apiRequest<AuditResponse>('/audits', {
+    apiRequest<AuditResponse>('/audits/', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
 
   update: (auditId: string, data: AuditUpdate) =>
-    apiRequest<AuditResponse>(`/audits/${auditId}`, {
+    apiRequest<AuditResponse>(`/audits/${auditId}/`, {
       method: 'PUT',
       body: JSON.stringify(data),
     }),
@@ -604,16 +604,16 @@ export const cargoApi = {
     apiRequest<CargoResponse[]>(`/cargo${shipId ? `?ship_id=${shipId}` : ''}`),
 
   getById: (cargoId: string) =>
-    apiRequest<CargoResponse>(`/cargo/${cargoId}`),
+    apiRequest<CargoResponse>(`/cargo/${cargoId}/`),
 
   create: (data: CargoCreate) =>
-    apiRequest<CargoResponse>('/cargo', {
+    apiRequest<CargoResponse>('/cargo/', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
 
   update: (cargoId: string, data: CargoUpdate) =>
-    apiRequest<CargoResponse>(`/cargo/${cargoId}`, {
+    apiRequest<CargoResponse>(`/cargo/${cargoId}/`, {
       method: 'PUT',
       body: JSON.stringify(data),
     }),
@@ -675,27 +675,27 @@ export const bunkeringApi = {
   },
 
   getById: (operationId: string) =>
-    apiRequest<BunkeringResponse>(`/bunkering/${operationId}`),
+    apiRequest<BunkeringResponse>(`/bunkering/${operationId}/`),
 
   create: (data: BunkeringCreate) =>
-    apiRequest<BunkeringResponse>('/bunkering', {
+    apiRequest<BunkeringResponse>('/bunkering/', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
 
   update: (operationId: string, data: BunkeringUpdate) =>
-    apiRequest<BunkeringResponse>(`/bunkering/${operationId}`, {
+    apiRequest<BunkeringResponse>(`/bunkering/${operationId}/`, {
       method: 'PUT',
       body: JSON.stringify(data),
     }),
 
   completeChecklist: (operationId: string) =>
-    apiRequest<BunkeringResponse>(`/bunkering/${operationId}/complete-checklist`, {
+    apiRequest<BunkeringResponse>(`/bunkering/${operationId}/complete-checklist/`, {
       method: 'POST',
     }),
 
   markSampleTaken: (operationId: string) =>
-    apiRequest<BunkeringResponse>(`/bunkering/${operationId}/sample-taken`, {
+    apiRequest<BunkeringResponse>(`/bunkering/${operationId}/sample-taken/`, {
       method: 'POST',
     }),
 };
@@ -751,27 +751,27 @@ export const recruitmentApi = {
     apiRequest<CandidateResponse[]>('/recruitment'),
 
   getCandidateById: (candidateId: string) =>
-    apiRequest<CandidateResponse>(`/recruitment/${candidateId}`),
+    apiRequest<CandidateResponse>(`/recruitment/${candidateId}/`),
 
   createCandidate: (candidateData: CandidateCreate) =>
-    apiRequest<CandidateResponse>('/recruitment', {
+    apiRequest<CandidateResponse>('/recruitment/', {
       method: 'POST',
       body: JSON.stringify(candidateData),
     }),
 
   updateCandidate: (candidateId: string, candidateData: CandidateUpdate) =>
-    apiRequest<CandidateResponse>(`/recruitment/${candidateId}`, {
+    apiRequest<CandidateResponse>(`/recruitment/${candidateId}/`, {
       method: 'PUT',
       body: JSON.stringify(candidateData),
     }),
 
   deleteCandidate: (candidateId: string) =>
-    apiRequest<{ message: string }>(`/recruitment/${candidateId}`, {
+    apiRequest<{ message: string }>(`/recruitment/${candidateId}/`, {
       method: 'DELETE',
     }),
 
   moveCandidateStage: (candidateId: string, newStage: RecruitmentStage) =>
-    apiRequest<CandidateResponse>(`/recruitment/${candidateId}/stage?new_stage=${newStage}`, {
+    apiRequest<CandidateResponse>(`/recruitment/${candidateId}/stage/?new_stage=${newStage}`, {
       method: 'PATCH',
     }),
 };
@@ -859,36 +859,36 @@ export const dgCommunicationApi = {
   },
 
   getById: (commId: string) =>
-    apiRequest<DGCommunicationResponse>(`/dg-communications/${commId}`),
+    apiRequest<DGCommunicationResponse>(`/dg-communications/${commId}/`),
 
   getStats: () =>
-    apiRequest<DGCommunicationStats>('/dg-communications/stats'),
+    apiRequest<DGCommunicationStats>('/dg-communications/stats/'),
 
   create: (data: DGCommunicationCreate) =>
-    apiRequest<DGCommunicationResponse>('/dg-communications', {
+    apiRequest<DGCommunicationResponse>('/dg-communications/', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
 
   update: (commId: string, data: DGCommunicationUpdate) =>
-    apiRequest<DGCommunicationResponse>(`/dg-communications/${commId}`, {
+    apiRequest<DGCommunicationResponse>(`/dg-communications/${commId}/`, {
       method: 'PUT',
       body: JSON.stringify(data),
     }),
 
   addResponse: (commId: string, response: string, markCompleted: boolean = false) =>
-    apiRequest<DGCommunicationResponse>(`/dg-communications/${commId}/respond`, {
+    apiRequest<DGCommunicationResponse>(`/dg-communications/${commId}/respond/`, {
       method: 'POST',
       body: JSON.stringify({ response, mark_completed: markCompleted }),
     }),
 
   markCompleted: (commId: string) =>
-    apiRequest<DGCommunicationResponse>(`/dg-communications/${commId}/complete`, {
+    apiRequest<DGCommunicationResponse>(`/dg-communications/${commId}/complete/`, {
       method: 'POST',
     }),
 
   delete: (commId: string) =>
-    apiRequest<{ message: string }>(`/dg-communications/${commId}`, {
+    apiRequest<{ message: string }>(`/dg-communications/${commId}/`, {
       method: 'DELETE',
     }),
 };
@@ -952,45 +952,47 @@ export const invoicesApi = {
     if (params?.ship_id) query.append('ship_id', params.ship_id);
     if (params?.status) query.append('status', params.status);
 
-    return apiRequest<InvoiceResponse[]>(`/invoices?${query.toString()}`);
+    return apiRequest<InvoiceResponse[]>(`/invoices/?${query.toString()}`);
   },
 
   getById: (invoiceId: string) =>
-    apiRequest<InvoiceResponse>(`/invoices/${invoiceId}`),
+    apiRequest<InvoiceResponse>(`/invoices/${invoiceId}/`),
 
   getStats: (shipId?: string) => {
     const query = shipId ? `?ship_id=${shipId}` : '';
-    return apiRequest<InvoiceStats>(`/invoices/stats${query}`);
+    return apiRequest<InvoiceStats>(`/invoices/stats/${query}`);
   },
 
   create: (data: InvoiceCreate) =>
-    apiRequest<InvoiceResponse>('/invoices', {
+    apiRequest<InvoiceResponse>('/invoices/', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
 
   submit: (invoiceId: string) =>
-    apiRequest<InvoiceResponse>(`/invoices/${invoiceId}/submit`, {
+    apiRequest<InvoiceResponse>(`/invoices/${invoiceId}/submit/`, {
       method: 'POST',
     }),
 
   approve: (invoiceId: string, notes?: string) =>
-    apiRequest<InvoiceResponse>(`/invoices/${invoiceId}/approve${notes ? `?notes=${encodeURIComponent(notes)}` : ''}`, {
+    apiRequest<InvoiceResponse>(`/invoices/${invoiceId}/approve/`, {
       method: 'POST',
+      body: JSON.stringify({ approval_notes: notes }),
     }),
 
-  reject: (invoiceId: string, notes?: string) =>
-    apiRequest<InvoiceResponse>(`/invoices/${invoiceId}/reject${notes ? `?notes=${encodeURIComponent(notes)}` : ''}`, {
+  reject: (invoiceId: string, notes: string) =>
+    apiRequest<InvoiceResponse>(`/invoices/${invoiceId}/reject/`, {
       method: 'POST',
+      body: JSON.stringify({ rejection_notes: notes }),
     }),
 
   markPaid: (invoiceId: string) =>
-    apiRequest<InvoiceResponse>(`/invoices/${invoiceId}/mark-paid`, {
+    apiRequest<InvoiceResponse>(`/invoices/${invoiceId}/mark-paid/`, {
       method: 'POST',
     }),
 
   delete: (invoiceId: string) =>
-    apiRequest<{ message: string }>(`/invoices/${invoiceId}`, {
+    apiRequest<{ message: string }>(`/invoices/${invoiceId}/`, {
       method: 'DELETE',
     }),
 };
