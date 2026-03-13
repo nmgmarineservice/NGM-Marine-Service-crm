@@ -124,36 +124,35 @@ class UserService(DatabaseService):
         return None
 
     async def get_all_users(self, skip: int = 0, limit: int = 100) -> List[UserResponse]:
-        """Get all users with pagination"""
+        """Get all users with pagination - Optimized"""
         query = self.db.collection(self.collection_name).offset(skip).limit(limit)
         docs = query.stream()
         
-        users = []
-        for doc in docs:
-            user_data = doc.to_dict()
-            user = User.from_dict(user_data, doc.id)
+        users_list = [User.from_dict(doc.to_dict(), doc.id) for doc in docs]
+        if not users_list:
+            return []
             
-            ship_name = None
-            if user.ship_id:
-                ship_doc = self.db.collection("ships").document(user.ship_id).get()
-                if ship_doc.exists:
-                    ship_name = ship_doc.to_dict().get('name')
+        # Optimization: Fetch all needed ships once
+        ship_ids = {u.ship_id for u in users_list if u.ship_id}
+        ship_names_map = {}
+        if ship_ids:
+            ship_refs = [self.db.collection("ships").document(sid) for sid in ship_ids]
+            ship_docs = self.db.get_all(ship_refs)
+            ship_names_map = {sdoc.id: sdoc.to_dict().get('name', '') for sdoc in ship_docs if sdoc.exists}
             
-            users.append(UserResponse(
-                id=user.id,
-                email=user.email,
-                name=user.name,
-                role=user.role,
-                ship_id=user.ship_id,
-                ship_name=ship_name,
-                phone=user.phone,
-                position=user.position,
-                active=user.active,
-                created_at=user.created_at,
-                updated_at=user.updated_at
-            ))
-        
-        return users
+        return [UserResponse(
+            id=user.id,
+            email=user.email,
+            name=user.name,
+            role=user.role,
+            ship_id=user.ship_id,
+            ship_name=ship_names_map.get(user.ship_id),
+            phone=user.phone,
+            position=user.position,
+            active=user.active,
+            created_at=user.created_at,
+            updated_at=user.updated_at
+        ) for user in users_list]
 
     async def get_users_by_ship(self, ship_id: str) -> List[UserResponse]:
         """Get all users for a specific ship using Firestore query"""
@@ -256,35 +255,43 @@ class ShipService(DatabaseService):
         )
 
     async def get_all_ships(self) -> List[ShipResponse]:
-        """Get all ships"""
+        """Get all ships - Optimized to avoid N+1 crew count queries"""
         docs = self.db.collection(self.collection_name).stream()
         
-        ships = []
+        ships_list = []
+        ship_ids = []
         for doc in docs:
             ship_data = doc.to_dict()
             ship = Ship.from_dict(ship_data, doc.id)
+            ships_list.append(ship)
+            ship_ids.append(ship.id)
             
-            # Count crew members for this ship
-            crew_count = len(list(self.db.collection("users").where("ship_id", "==", ship.id).stream()))
-            
-            ships.append(ShipResponse(
-                id=ship.id,
-                name=ship.name,
-                type=ship.type,
-                imo_number=ship.imo_number,
-                flag_state=ship.flag_state,
-                call_sign=ship.call_sign,
-                gross_tonnage=ship.gross_tonnage,
-                built_year=ship.built_year,
-                status=ship.status,
-                owner=ship.owner,
-                operator=ship.operator,
-                crew_count=crew_count,
-                created_at=ship.created_at,
-                updated_at=ship.updated_at
-            ))
+        # Optimize: Fetch all users by ship_id in one batch or count them more efficiently
+        # Since the fleet is small, we can group users by ship in memory
+        user_docs = self.db.collection("users").stream()
+        ship_crew_counts = {sid: 0 for sid in ship_ids}
+        for u_doc in user_docs:
+            u_data = u_doc.to_dict()
+            s_id = u_data.get('ship_id')
+            if s_id in ship_crew_counts:
+                ship_crew_counts[s_id] += 1
         
-        return ships
+        return [ShipResponse(
+            id=ship.id,
+            name=ship.name,
+            type=ship.type,
+            imo_number=ship.imo_number,
+            flag_state=ship.flag_state,
+            call_sign=ship.call_sign,
+            gross_tonnage=ship.gross_tonnage,
+            built_year=ship.built_year,
+            status=ship.status,
+            owner=ship.owner,
+            operator=ship.operator,
+            crew_count=ship_crew_counts.get(ship.id, 0),
+            created_at=ship.created_at,
+            updated_at=ship.updated_at
+        ) for ship in ships_list]
 
     async def get_ship_by_id(self, ship_id: str) -> Optional[ShipResponse]:
         """Get ship by ID"""
@@ -422,54 +429,51 @@ class PMSService(DatabaseService):
         return await self.get_task_by_id(task_id)
 
     async def get_tasks_by_ship(self, ship_id: str, status: Optional[TaskStatus] = None) -> List[PMSTaskResponse]:
-        """Get all PMS tasks for a ship, optionally filtered by status"""
+        """Get all PMS tasks for a ship, optionally filtered by status - Optimized"""
         query = self.db.collection(self.collection_name).where("ship_id", "==", ship_id)
-        
         if status:
             query = query.where("status", "==", status.value)
         
         docs = query.stream()
+        tasks_list = [PMSTask.from_dict(doc.to_dict(), doc.id) for doc in docs]
+        if not tasks_list:
+            return []
+
+        # Optimization: Fetch ship and unique users once
+        ship_doc = self.db.collection("ships").document(ship_id).get()
+        ship_name = ship_doc.to_dict().get('name', '') if ship_doc.exists else ''
         
-        tasks = []
-        for doc in docs:
-            task_data = doc.to_dict()
-            task = PMSTask.from_dict(task_data, doc.id)
+        assigned_user_ids = {t.assigned_to for t in tasks_list if t.assigned_to}
+        user_names_map = {}
+        if assigned_user_ids:
+            user_refs = [self.db.collection("users").document(uid) for uid in assigned_user_ids]
+            user_docs = self.db.get_all(user_refs)
+            user_names_map = {udoc.id: udoc.to_dict().get('name') for udoc in user_docs if udoc.exists}
             
-            ship_doc = self.db.collection("ships").document(task.ship_id).get()
-            ship_name = ship_doc.to_dict().get('name', '') if ship_doc.exists else ''
-            
-            assigned_to_name = None
-            if task.assigned_to:
-                user_doc = self.db.collection("users").document(task.assigned_to).get()
-                if user_doc.exists:
-                    assigned_to_name = user_doc.to_dict().get('name')
-            
-            tasks.append(PMSTaskResponse(
-                id=task.id,
-                ship_id=task.ship_id,
-                ship_name=ship_name,
-                equipment_name=task.equipment_name,
-                task_description=task.task_description,
-                frequency=task.frequency,
-                priority=task.priority,
-                status=task.status,
-                assigned_to=task.assigned_to,
-                assigned_to_name=assigned_to_name,
-                due_date=task.due_date,
-                completed_date=task.completed_date,
-                estimated_hours=task.estimated_hours,
-                actual_hours=task.actual_hours,
-                instructions=task.instructions,
-                safety_notes=task.safety_notes,
-                completion_notes=task.completion_notes,
-                photos=task.photos,
-                created_by=task.created_by,
-                approved_by=task.approved_by,
-                created_at=task.created_at,
-                updated_at=task.updated_at
-            ))
-        
-        return tasks
+        return [PMSTaskResponse(
+            id=task.id,
+            ship_id=task.ship_id,
+            ship_name=ship_name,
+            equipment_name=task.equipment_name,
+            task_description=task.task_description,
+            frequency=task.frequency,
+            priority=task.priority,
+            status=task.status,
+            assigned_to=task.assigned_to,
+            assigned_to_name=user_names_map.get(task.assigned_to),
+            due_date=task.due_date,
+            completed_date=task.completed_date,
+            estimated_hours=task.estimated_hours,
+            actual_hours=task.actual_hours,
+            instructions=task.instructions,
+            safety_notes=task.safety_notes,
+            completion_notes=task.completion_notes,
+            photos=task.photos,
+            created_by=task.created_by,
+            approved_by=task.approved_by,
+            created_at=task.created_at,
+            updated_at=task.updated_at
+        ) for task in tasks_list]
 
     async def delete_task(self, task_id: str) -> bool:
         """Delete a PMS task"""
@@ -481,54 +485,55 @@ class PMSService(DatabaseService):
         return True
 
     async def get_all_tasks(self, status: Optional[TaskStatus] = None) -> List[PMSTaskResponse]:
-        """Get all PMS tasks across all ships, optionally filtered by status"""
+        """Get all PMS tasks across all ships - Optimized"""
         query = self.db.collection(self.collection_name)
-        
         if status:
             query = query.where("status", "==", status.value)
         
         docs = query.stream()
-        
-        tasks = []
-        for doc in docs:
-            task_data = doc.to_dict()
-            task = PMSTask.from_dict(task_data, doc.id)
+        tasks_list = [PMSTask.from_dict(doc.to_dict(), doc.id) for doc in docs]
+        if not tasks_list:
+            return []
+
+        # Optimization: Batch fetch related names
+        ship_ids = {t.ship_id for t in tasks_list}
+        ship_names_map = {}
+        if ship_ids:
+            ship_refs = [self.db.collection("ships").document(sid) for sid in ship_ids]
+            ship_docs = self.db.get_all(ship_refs)
+            ship_names_map = {sdoc.id: sdoc.to_dict().get('name', '') for sdoc in ship_docs if sdoc.exists}
+
+        assigned_user_ids = {t.assigned_to for t in tasks_list if t.assigned_to}
+        user_names_map = {}
+        if assigned_user_ids:
+            user_refs = [self.db.collection("users").document(uid) for uid in assigned_user_ids]
+            user_docs = self.db.get_all(user_refs)
+            user_names_map = {udoc.id: udoc.to_dict().get('name') for udoc in user_docs if udoc.exists}
             
-            ship_doc = self.db.collection("ships").document(task.ship_id).get()
-            ship_name = ship_doc.to_dict().get('name', '') if ship_doc.exists else ''
-            
-            assigned_to_name = None
-            if task.assigned_to:
-                user_doc = self.db.collection("users").document(task.assigned_to).get()
-                if user_doc.exists:
-                    assigned_to_name = user_doc.to_dict().get('name')
-            
-            tasks.append(PMSTaskResponse(
-                id=task.id,
-                ship_id=task.ship_id,
-                ship_name=ship_name,
-                equipment_name=task.equipment_name,
-                task_description=task.task_description,
-                frequency=task.frequency,
-                priority=task.priority,
-                status=task.status,
-                assigned_to=task.assigned_to,
-                assigned_to_name=assigned_to_name,
-                due_date=task.due_date,
-                completed_date=task.completed_date,
-                estimated_hours=task.estimated_hours,
-                actual_hours=task.actual_hours,
-                instructions=task.instructions,
-                safety_notes=task.safety_notes,
-                completion_notes=task.completion_notes,
-                photos=task.photos,
-                created_by=task.created_by,
-                approved_by=task.approved_by,
-                created_at=task.created_at,
-                updated_at=task.updated_at
-            ))
-        
-        return tasks
+        return [PMSTaskResponse(
+            id=task.id,
+            ship_id=task.ship_id,
+            ship_name=ship_names_map.get(task.ship_id, ''),
+            equipment_name=task.equipment_name,
+            task_description=task.task_description,
+            frequency=task.frequency,
+            priority=task.priority,
+            status=task.status,
+            assigned_to=task.assigned_to,
+            assigned_to_name=user_names_map.get(task.assigned_to),
+            due_date=task.due_date,
+            completed_date=task.completed_date,
+            estimated_hours=task.estimated_hours,
+            actual_hours=task.actual_hours,
+            instructions=task.instructions,
+            safety_notes=task.safety_notes,
+            completion_notes=task.completion_notes,
+            photos=task.photos,
+            created_by=task.created_by,
+            approved_by=task.approved_by,
+            created_at=task.created_at,
+            updated_at=task.updated_at
+        ) for task in tasks_list]
 
 class WorkLogService(DatabaseService):
     collection_name = "work_logs"
@@ -597,64 +602,158 @@ class WorkLogService(DatabaseService):
         )
 
     async def get_logs_by_ship(self, ship_id: str, status: Optional[WorkLogStatus] = None) -> List[WorkLogResponse]:
-        """Get all work logs for a ship"""
+        """Get all work logs for a ship - Optimized"""
         try:
             query = self.db.collection(self.collection_name).where("ship_id", "==", ship_id)
-            docs = list(query.stream())
+            docs = query.stream()
             
-            logs = []
-            for doc in docs:
-                log_response = await self.get_log_by_id(doc.id)
-                if log_response:
-                    # Apply status filter in Python to avoid composite index
-                    if status and log_response.status != status.value:
-                        continue
-                    logs.append(log_response)
+            logs_list = [WorkLog.from_dict(doc.to_dict(), doc.id) for doc in docs]
+            if not logs_list:
+                return []
             
-            # Sort by date descending in Python
-            logs.sort(key=lambda x: str(x.date) if x.date else '', reverse=True)
-            return logs
+            # Group level name fetching
+            ship_doc = self.db.collection("ships").document(ship_id).get()
+            ship_name = ship_doc.to_dict().get('name', '') if ship_doc.exists else ''
+            
+            user_ids = {l.crew_id for l in logs_list} | {l.approved_by for l in logs_list if l.approved_by}
+            user_names_map = {}
+            if user_ids:
+                user_refs = [self.db.collection("users").document(uid) for uid in user_ids if uid]
+                user_docs = self.db.get_all(user_refs)
+                user_names_map = {udoc.id: udoc.to_dict().get('name') for udoc in user_docs if udoc.exists}
+            
+            result = []
+            for log in logs_list:
+                if status and log.status != status:
+                    continue
+                
+                result.append(WorkLogResponse(
+                    id=log.id,
+                    ship_id=log.ship_id,
+                    ship_name=ship_name,
+                    crew_id=log.crew_id,
+                    crew_name=user_names_map.get(log.crew_id, ''),
+                    date=log.date.date() if isinstance(log.date, datetime) else log.date,
+                    task_type=log.task_type,
+                    description=log.description,
+                    hours_worked=log.hours_worked,
+                    status=log.status,
+                    photo_url=log.photo_url,
+                    remarks=log.remarks,
+                    approved_by=log.approved_by,
+                    approved_by_name=user_names_map.get(log.approved_by),
+                    approved_at=log.approved_at,
+                    created_at=log.created_at,
+                    updated_at=log.updated_at
+                ))
+            
+            result.sort(key=lambda x: str(x.date) if x.date else '', reverse=True)
+            return result
         except Exception as e:
             print(f"Error in get_logs_by_ship: {str(e)}")
             return []
 
     async def get_logs_by_crew(self, crew_id: str) -> List[WorkLogResponse]:
-        """Get all work logs for a crew member"""
+        """Get all work logs for a crew member - Optimized"""
         try:
             query = self.db.collection(self.collection_name).where("crew_id", "==", crew_id)
-            docs = list(query.stream())
+            docs = query.stream()
+            logs_list = [WorkLog.from_dict(doc.to_dict(), doc.id) for doc in docs]
             
-            logs = []
-            for doc in docs:
-                log_response = await self.get_log_by_id(doc.id)
-                if log_response:
-                    logs.append(log_response)
+            if not logs_list:
+                return []
+                
+            ship_ids = {l.ship_id for l in logs_list if l.ship_id}
+            ship_names = {}
+            if ship_ids:
+                s_docs = self.db.get_all([self.db.collection("ships").document(sid) for sid in ship_ids])
+                ship_names = {sd.id: sd.to_dict().get("name") for sd in s_docs if sd.exists}
+                
+            user_doc = self.db.collection("users").document(crew_id).get()
+            crew_name = user_doc.to_dict().get("name") if user_doc.exists else ""
             
-            # Sort by date descending in Python
-            logs.sort(key=lambda x: str(x.date) if x.date else '', reverse=True)
-            return logs
+            # Approver names
+            approver_ids = {l.approved_by for l in logs_list if l.approved_by}
+            approver_names = {}
+            if approver_ids:
+                a_docs = self.db.get_all([self.db.collection("users").document(aid) for aid in approver_ids if aid])
+                approver_names = {ad.id: ad.to_dict().get("name") for ad in a_docs if ad.exists}
+                
+            result = [WorkLogResponse(
+                id=log.id,
+                ship_id=log.ship_id,
+                ship_name=ship_names.get(log.ship_id, ""),
+                crew_id=log.crew_id,
+                crew_name=crew_name,
+                date=log.date.date() if isinstance(log.date, datetime) else log.date,
+                task_type=log.task_type,
+                description=log.description,
+                hours_worked=log.hours_worked,
+                status=log.status,
+                photo_url=log.photo_url,
+                remarks=log.remarks,
+                approved_by=log.approved_by,
+                approved_by_name=approver_names.get(log.approved_by),
+                approved_at=log.approved_at,
+                created_at=log.created_at,
+                updated_at=log.updated_at
+            ) for log in logs_list]
+            
+            result.sort(key=lambda x: str(x.date) if x.date else '', reverse=True)
+            return result
         except Exception as e:
             print(f"Error in get_logs_by_crew: {str(e)}")
             return []
 
     async def get_all_logs(self, status: Optional[WorkLogStatus] = None) -> List[WorkLogResponse]:
-        """Get all work logs, optionally filtered by status"""
+        """Get all work logs, optionally filtered by status - Optimized"""
         try:
             query = self.db.collection(self.collection_name)
-            docs = list(query.stream())
+            docs = query.stream()
+            logs_list = [WorkLog.from_dict(doc.to_dict(), doc.id) for doc in docs]
             
-            logs = []
-            for doc in docs:
-                log_response = await self.get_log_by_id(doc.id)
-                if log_response:
-                    # Apply status filter in Python to avoid composite index
-                    if status and log_response.status != status.value:
-                        continue
-                    logs.append(log_response)
+            if not logs_list:
+                return []
+                
+            ship_ids = {l.ship_id for l in logs_list if l.ship_id}
+            ship_names = {}
+            if ship_ids:
+                s_docs = self.db.get_all([self.db.collection("ships").document(sid) for sid in ship_ids])
+                ship_names = {sd.id: sd.to_dict().get("name") for sd in s_docs if sd.exists}
+                
+            user_ids = {l.crew_id for l in logs_list} | {l.approved_by for l in logs_list if l.approved_by}
+            user_names = {}
+            if user_ids:
+                u_docs = self.db.get_all([self.db.collection("users").document(uid) for uid in user_ids if uid])
+                user_names = {ud.id: ud.to_dict().get("name") for ud in u_docs if ud.exists}
+                
+            result = []
+            for log in logs_list:
+                if status and log.status != status:
+                    continue
+                    
+                result.append(WorkLogResponse(
+                    id=log.id,
+                    ship_id=log.ship_id,
+                    ship_name=ship_names.get(log.ship_id, ""),
+                    crew_id=log.crew_id,
+                    crew_name=user_names.get(log.crew_id, ""),
+                    date=log.date.date() if isinstance(log.date, datetime) else log.date,
+                    task_type=log.task_type,
+                    description=log.description,
+                    hours_worked=log.hours_worked,
+                    status=log.status,
+                    photo_url=log.photo_url,
+                    remarks=log.remarks,
+                    approved_by=log.approved_by,
+                    approved_by_name=user_names.get(log.approved_by),
+                    approved_at=log.approved_at,
+                    created_at=log.created_at,
+                    updated_at=log.updated_at
+                ))
             
-            # Sort by date descending in Python
-            logs.sort(key=lambda x: str(x.date) if x.date else '', reverse=True)
-            return logs
+            result.sort(key=lambda x: str(x.date) if x.date else '', reverse=True)
+            return result
         except Exception as e:
             print(f"Error in get_all_logs: {str(e)}")
             return []
@@ -786,34 +885,58 @@ class BunkeringService(DatabaseService):
             return None
 
     async def get_all_operations(self, ship_id: Optional[str] = None, status: Optional[BunkeringStatus] = None) -> List[BunkeringResponse]:
-        """Get all bunkering operations"""
+        """Get all bunkering operations - Optimized"""
         try:
-            print(f"[DEBUG] Getting bunkering operations. ship_id={ship_id}, status={status}")
             query = self.db.collection(self.collection_name)
-            
             if ship_id:
                 query = query.where("ship_id", "==", ship_id)
             if status:
                 query = query.where("status", "==", status.value)
             
             docs = query.order_by("scheduled_date", direction=Query.DESCENDING).stream()
+            ops_list = [Bunkering.from_dict(doc.to_dict(), doc.id) for doc in docs]
             
-            operations = []
-            for doc in docs:
-                try:
-                    op = await self.get_operation_by_id(doc.id)
-                    if op:
-                        operations.append(op)
-                except Exception as e:
-                    print(f"[ERROR] Processing bunkering operation {doc.id}: {str(e)}")
-                    # Continue with other operations even if one fails
-                    continue
-            
-            print(f"[DEBUG] Found {len(operations)} bunkering operations")
-            return operations
+            if not ops_list:
+                return []
+                
+            # Batch fetch related names
+            ship_ids = {o.ship_id for o in ops_list if o.ship_id}
+            ship_names = {}
+            if ship_ids:
+                s_docs = self.db.get_all([self.db.collection("ships").document(sid) for sid in ship_ids])
+                ship_names = {sd.id: sd.to_dict().get("name", "") for sd in s_docs if sd.exists}
+                
+            user_ids = {o.created_by for o in ops_list if o.created_by}
+            user_names = {}
+            if user_ids:
+                u_docs = self.db.get_all([self.db.collection("users").document(uid) for uid in user_ids])
+                user_names = {ud.id: ud.to_dict().get("name", "") for ud in u_docs if ud.exists}
+                
+            return [BunkeringResponse(
+                id=op.id,
+                ship_id=op.ship_id,
+                ship_name=ship_names.get(op.ship_id, ""),
+                port=op.port,
+                supplier=op.supplier,
+                fuel_type=op.fuel_type,
+                quantity=op.quantity,
+                scheduled_date=op.scheduled_date,
+                completed_date=op.completed_date,
+                status=op.status,
+                cost_per_mt=op.cost_per_mt,
+                total_cost=op.quantity * op.cost_per_mt,
+                officer_in_charge=op.officer_in_charge,
+                checklist_completed=op.checklist_completed,
+                sample_taken=op.sample_taken,
+                remarks=op.remarks,
+                created_by=op.created_by,
+                created_by_name=user_names.get(op.created_by, ""),
+                created_at=op.created_at,
+                updated_at=op.updated_at
+            ) for op in ops_list]
         except Exception as e:
             print(f"[ERROR] in get_all_operations: {str(e)}")
-            return []  # Return empty list instead of letting error propagate
+            return []
 
     async def update_operation(self, operation_id: str, update_data: dict) -> Optional[BunkeringResponse]:
         """Update a bunkering operation"""
@@ -880,42 +1003,35 @@ class CandidateService(DatabaseService):
         )
     
     async def get_all_candidates(self) -> List[CandidateResponse]:
-        """Get all candidates"""
+        """Get all candidates - Optimized"""
         docs = self.db.collection(self.collection_name).stream()
         
-        candidates = []
-        for doc in docs:
-            data = doc.to_dict()
-            candidate = Candidate.from_dict(data, doc.id)
+        candidates_list = [Candidate.from_dict(doc.to_dict(), doc.id) for doc in docs]
+        if not candidates_list:
+            return []
             
-            # Get vessel name if provided
-            vessel_name = None
-            if candidate.vessel_id:
-                ship_doc = self.db.collection("ships").document(candidate.vessel_id).get()
-                if ship_doc.exists:
-                    vessel_name = ship_doc.to_dict().get('name')
+        ship_ids = {c.vessel_id for c in candidates_list if c.vessel_id}
+        ship_names = {}
+        if ship_ids:
+            s_docs = self.db.get_all([self.db.collection("ships").document(sid) for sid in ship_ids])
+            ship_names = {sd.id: sd.to_dict().get("name", "") for sd in s_docs if sd.exists}
             
-            # Generate initials
-            initials = ''.join([n[0].upper() for n in candidate.name.split()[:2]])
-            
-            candidates.append(CandidateResponse(
-                id=candidate.id,
-                name=candidate.name,
-                email=candidate.email,
-                phone=candidate.phone,
-                rank=candidate.rank,
-                experience=candidate.experience,
-                vessel_id=candidate.vessel_id,
-                vessel_name=vessel_name,
-                source=candidate.source,
-                stage=candidate.stage,
-                notes=candidate.notes,
-                initials=initials,
-                created_at=candidate.created_at,
-                updated_at=candidate.updated_at
-            ))
-        
-        return candidates
+        return [CandidateResponse(
+            id=c.id,
+            name=c.name,
+            email=c.email,
+            phone=c.phone,
+            rank=c.rank,
+            experience=c.experience,
+            vessel_id=c.vessel_id,
+            vessel_name=ship_names.get(c.vessel_id),
+            source=c.source,
+            stage=c.stage,
+            notes=c.notes,
+            initials=''.join([n[0].upper() for n in c.name.split()[:2]]),
+            created_at=c.created_at,
+            updated_at=c.updated_at
+        ) for c in candidates_list]
     
     async def get_candidate_by_id(self, candidate_id: str) -> Optional[CandidateResponse]:
         """Get candidate by ID"""
@@ -1088,32 +1204,61 @@ class DGCommunicationService(DatabaseService):
         category: Optional[DGCommunicationCategory] = None,
         ship_id: Optional[str] = None
     ) -> List[DGCommunicationResponse]:
-        """Get all DG communications with optional filters"""
-        # Get all documents first, then filter in Python to avoid composite index requirements
+        """Get all DG communications - Optimized"""
         docs = self.db.collection(self.collection_name).stream()
         
-        communications = []
+        comms_list = []
         for doc in docs:
             data = doc.to_dict()
+            # Basic filtering in stream loop to save memory
+            if comm_type and data.get("comm_type") != comm_type.value: continue
+            if status and data.get("status") != status.value: continue
+            if category and data.get("category") != category.value: continue
+            if ship_id and data.get("ship_id") != ship_id: continue
             
-            # Apply filters in Python
-            if comm_type and data.get("comm_type") != comm_type.value:
-                continue
-            if status and data.get("status") != status.value:
-                continue
-            if category and data.get("category") != category.value:
-                continue
-            if ship_id and data.get("ship_id") != ship_id:
-                continue
+            comms_list.append(DGCommunication.from_dict(data, doc.id))
             
-            comm = await self.get_communication_by_id(doc.id)
-            if comm:
-                communications.append(comm)
+        if not comms_list:
+            return []
+            
+        ship_ids = {c.ship_id for c in comms_list if c.ship_id}
+        ship_names = {}
+        if ship_ids:
+            s_docs = self.db.get_all([self.db.collection("ships").document(sid) for sid in ship_ids])
+            ship_names = {sd.id: sd.to_dict().get("name", "") for sd in s_docs if sd.exists}
+            
+        user_ids = {c.crew_id for c in comms_list if c.crew_id} | {c.created_by for c in comms_list if c.created_by}
+        user_names = {}
+        if user_ids:
+            u_docs = self.db.get_all([self.db.collection("users").document(uid) for uid in user_ids if uid])
+            user_names = {ud.id: ud.to_dict().get("name", "") for ud in u_docs if ud.exists}
+            
+        result = [DGCommunicationResponse(
+            id=c.id,
+            ref_no=c.ref_no,
+            comm_type=c.comm_type,
+            subject=c.subject,
+            content=c.content,
+            category=c.category,
+            status=c.status,
+            dg_office=c.dg_office,
+            ship_id=c.ship_id,
+            ship_name=ship_names.get(c.ship_id),
+            crew_id=c.crew_id,
+            crew_name=user_names.get(c.crew_id),
+            priority=c.priority,
+            due_date=c.due_date,
+            response=c.response,
+            response_date=c.response_date,
+            attachments=c.attachments,
+            created_by=c.created_by,
+            created_by_name=user_names.get(c.created_by, ""),
+            created_at=c.created_at,
+            updated_at=c.updated_at
+        ) for c in comms_list]
         
-        # Sort by created_at descending
-        communications.sort(key=lambda x: x.created_at, reverse=True)
-        
-        return communications
+        result.sort(key=lambda x: x.created_at, reverse=True)
+        return result
     
     async def update_communication(self, comm_id: str, update_data: dict) -> Optional[DGCommunicationResponse]:
         """Update a DG communication"""
@@ -1284,36 +1429,70 @@ class InvoiceService(DatabaseService):
         ship_id: Optional[str] = None,
         status: Optional[InvoiceStatus] = None
     ) -> List[InvoiceResponse]:
-        """Get all invoices with optional filters"""
-        docs = self.db.collection(self.collection_name).stream()
+        """Get all invoices with optional filters - Optimized"""
+        query = self.db.collection(self.collection_name)
+        if ship_id:
+            query = query.where("ship_id", "==", ship_id)
         
-        invoices = []
-        for doc in docs:
-            data = doc.to_dict()
-            
-            # Apply filters in Python
-            if ship_id and data.get("ship_id") != ship_id:
-                continue
-            if status and data.get("status") != status.value:
-                continue
-            
-            invoice = await self.get_invoice_by_id(doc.id)
-            if invoice:
-                invoices.append(invoice)
+        docs = query.stream()
+        invoices_list = [Invoice.from_dict(doc.to_dict(), doc.id) for doc in docs]
         
-        # Sort by created_at descending (handle timezone-aware and naive datetimes)
+        if not invoices_list:
+            return []
+            
+        # Optimization: Batch fetch related names
+        ship_ids = {i.ship_id for i in invoices_list if i.ship_id}
+        ship_names_map = {}
+        if ship_ids:
+            ship_refs = [self.db.collection("ships").document(sid) for sid in ship_ids]
+            ship_docs = self.db.get_all(ship_refs)
+            ship_names_map = {sdoc.id: sdoc.to_dict().get('name', '') for sdoc in ship_docs if sdoc.exists}
+
+        user_ids = {i.created_by for i in invoices_list if i.created_by} | {i.approved_by for i in invoices_list if i.approved_by}
+        user_names_map = {}
+        if user_ids:
+            user_refs = [self.db.collection("users").document(uid) for uid in user_ids if uid]
+            user_docs = self.db.get_all(user_refs)
+            user_names_map = {udoc.id: udoc.to_dict().get('name', '') for udoc in user_docs if udoc.exists}
+            
+        result = []
+        for inv in invoices_list:
+            if status and inv.status != status:
+                continue
+                
+            result.append(InvoiceResponse(
+                id=inv.id,
+                ship_id=inv.ship_id,
+                ship_name=ship_names_map.get(inv.ship_id, ''),
+                invoice_number=inv.invoice_number,
+                vendor_name=inv.vendor_name,
+                category=inv.category,
+                amount=inv.amount,
+                currency=inv.currency,
+                description=inv.description,
+                status=inv.status,
+                due_date=inv.due_date,
+                paid_date=inv.paid_date,
+                attachments=inv.attachments,
+                remarks=inv.remarks,
+                created_by=inv.created_by,
+                created_by_name=user_names_map.get(inv.created_by, ''),
+                approved_by=inv.approved_by,
+                approval_notes=inv.approval_notes,
+                created_at=inv.created_at,
+                updated_at=inv.updated_at
+            ))
+        
+        # Sort by created_at descending
         def get_sort_key(inv):
             dt = inv.created_at
-            if dt is None:
-                return datetime.min
-            # Convert to naive datetime for comparison if needed
+            if dt is None: return datetime.min
             if hasattr(dt, 'tzinfo') and dt.tzinfo is not None:
                 return dt.replace(tzinfo=None)
             return dt
         
-        invoices.sort(key=get_sort_key, reverse=True)
-        
-        return invoices
+        result.sort(key=get_sort_key, reverse=True)
+        return result
     
     async def update_invoice(self, invoice_id: str, update_data: dict) -> Optional[InvoiceResponse]:
         """Update an invoice"""
@@ -1452,35 +1631,55 @@ class ClientService(DatabaseService):
         status: Optional[ClientStatus] = None,
         country: Optional[str] = None
     ) -> List[ClientResponse]:
-        """Get all clients with optional filters"""
+        """Get all clients - Optimized"""
         docs = self.db.collection(self.collection_name).stream()
         
-        clients = []
-        for doc in docs:
-            data = doc.to_dict()
+        clients_list = [Client.from_dict(doc.to_dict(), doc.id) for doc in docs]
+        if not clients_list:
+            return []
             
-            # Apply filters in Python
-            if status and data.get("status") != status.value:
-                continue
-            if country and data.get("country") != country:
-                continue
-            
-            client = await self.get_client_by_id(doc.id)
-            if client:
-                clients.append(client)
+        # Optimization: Fetch all ships once to count vessels per client
+        ship_docs = self.db.collection("ships").stream()
+        client_vessel_counts = {}
+        for s_doc in ship_docs:
+            s_data = s_doc.to_dict()
+            c_id = s_data.get('client_id')
+            if c_id:
+                client_vessel_counts[c_id] = client_vessel_counts.get(c_id, 0) + 1
         
-        # Sort by created_at descending
+        result = []
+        for client in clients_list:
+            if status and client.status != status: continue
+            if country and client.country != country: continue
+            
+            result.append(ClientResponse(
+                id=client.id,
+                name=client.name,
+                company=client.company,
+                contact_person=client.contact_person,
+                email=client.email,
+                phone=client.phone,
+                address=client.address,
+                country=client.country,
+                contract_start=client.contract_start,
+                contract_end=client.contract_end,
+                status=client.status,
+                vessels_count=client_vessel_counts.get(client.id, 0),
+                notes=client.notes,
+                created_by=client.created_by,
+                created_at=client.created_at,
+                updated_at=client.updated_at
+            ))
+        
         def get_sort_key(c):
             dt = c.created_at
-            if dt is None:
-                return datetime.min
+            if dt is None: return datetime.min
             if hasattr(dt, 'tzinfo') and dt.tzinfo is not None:
                 return dt.replace(tzinfo=None)
             return dt
-        
-        clients.sort(key=get_sort_key, reverse=True)
-        
-        return clients
+            
+        result.sort(key=get_sort_key, reverse=True)
+        return result
     
     async def update_client(self, client_id: str, update_data: dict) -> Optional[ClientResponse]:
         """Update a client"""

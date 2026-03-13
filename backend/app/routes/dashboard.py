@@ -14,39 +14,43 @@ def get_user_ship_filter(current_user: UserResponse) -> Optional[str]:
 
 @router.get("/fleet-summary/")
 async def get_fleet_summary(current_user: UserResponse = Depends(get_current_user)):
-    """Get fleet overview summary - filtered by role"""
+    """Get fleet overview summary - Optimized to avoid N+1 queries"""
     try:
         ship_filter = get_user_ship_filter(current_user)
         
         # Get ships based on role
         if ship_filter:
-            # Staff/Crew: Get only assigned ship
             ship = await ship_service.get_ship_by_id(ship_filter)
             ships = [ship] if ship else []
         else:
-            # Master: Get all ships
             ships = await ship_service.get_all_ships()
         
-        all_users = await user_service.get_all_users()
+        if not ships:
+            return FleetSummary(total_ships=0, active_ships=0, total_crew=0, pending_pms_tasks=0, pending_approvals=0, monthly_expenses=0.0, ships_stats=[])
+
+        # Optimize: Fetch ALL tasks once instead of per ship
+        if ship_filter:
+            all_fleet_tasks = await pms_service.get_tasks_by_ship(ship_filter)
+        else:
+            all_fleet_tasks = await pms_service.get_all_tasks()
+            
+        # Group tasks by ship_id
+        tasks_by_ship = {}
+        for task in all_fleet_tasks:
+            if task.ship_id not in tasks_by_ship:
+                tasks_by_ship[task.ship_id] = []
+            tasks_by_ship[task.ship_id].append(task)
         
         total_ships = len(ships)
         active_ships = len([ship for ship in ships if ship.status == ShipStatus.ACTIVE])
-        
-        # Filter crew count based on role
-        if ship_filter:
-            total_crew = len([user for user in all_users if user.role == UserRole.CREW and user.ship_id == ship_filter])
-        else:
-            total_crew = len([user for user in all_users if user.role == UserRole.CREW])
         
         # Calculate statistics
         ships_stats = []
         total_pending_pms = 0
         total_pending_approvals = 0
-        monthly_expenses = 0.0
         
         for ship in ships:
-            # Get PMS tasks for this ship
-            ship_tasks = await pms_service.get_tasks_by_ship(ship.id)
+            ship_tasks = tasks_by_ship.get(ship.id, [])
             
             pending_pms = len([t for t in ship_tasks if t.status == TaskStatus.PENDING])
             overdue_pms = len([t for t in ship_tasks if t.status == TaskStatus.OVERDUE])
@@ -55,7 +59,7 @@ async def get_fleet_summary(current_user: UserResponse = Depends(get_current_use
             total_pending_pms += pending_pms + overdue_pms
             total_pending_approvals += pending_approvals
             
-            ship_stat = ShipStats(
+            ships_stats.append(ShipStats(
                 ship_id=ship.id,
                 ship_name=ship.name,
                 crew_count=ship.crew_count,
@@ -64,8 +68,10 @@ async def get_fleet_summary(current_user: UserResponse = Depends(get_current_use
                 pending_crew_logs=0,
                 pending_invoices=0,
                 total_invoice_amount=0.0
-            )
-            ships_stats.append(ship_stat)
+            ))
+        
+        # Calculate total crew - from ship objects which already have crew_count optimized
+        total_crew = sum(ship.crew_count for ship in ships)
         
         return FleetSummary(
             total_ships=total_ships,
@@ -73,10 +79,11 @@ async def get_fleet_summary(current_user: UserResponse = Depends(get_current_use
             total_crew=total_crew,
             pending_pms_tasks=total_pending_pms,
             pending_approvals=total_pending_approvals,
-            monthly_expenses=monthly_expenses,
+            monthly_expenses=0.0,
             ships_stats=ships_stats
         )
     except Exception as e:
+        print(f"[ERROR] in get_fleet_summary: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/my-tasks/")

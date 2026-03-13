@@ -676,7 +676,7 @@ export function PMS() {
                         </SelectItem>
                       ))}
                       {crewMembers.length === 0 && (
-                        <SelectItem value="" disabled>No crew members available</SelectItem>
+                        <SelectItem value="none-available" disabled>No crew members available</SelectItem>
                       )}
                     </SelectContent>
                   </Select>
@@ -801,7 +801,7 @@ export function PMS() {
                       </SelectItem>
                     ))}
                     {crewMembers.length === 0 && (
-                      <SelectItem value="" disabled>No crew members available</SelectItem>
+                      <SelectItem value="none-available" disabled>No crew members available</SelectItem>
                     )}
                   </SelectContent>
                 </Select>
