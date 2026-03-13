@@ -1718,6 +1718,27 @@ class ClientService(DatabaseService):
         }
 
 
+class FormSubmissionService(DatabaseService):
+    collection_name = "form_submissions"
+    
+    async def get_submissions_by_user(self, user_id: str, status: Optional[str] = None) -> List[dict]:
+        """Get all submissions assigned to a specific user"""
+        query = self.db.collection(self.collection_name).where("assigned_to", "==", user_id)
+        if status:
+            query = query.where("status", "==", status)
+        
+        docs = query.stream()
+        return [{"id": doc.id, **doc.to_dict()} for doc in docs]
+
+    async def get_submissions_by_vessel(self, vessel_id: str, status: Optional[str] = None) -> List[dict]:
+        """Get all submissions for a specific vessel"""
+        query = self.db.collection(self.collection_name).where("vessel_id", "==", vessel_id)
+        if status:
+            query = query.where("status", "==", status)
+            
+        docs = query.stream()
+        return [{"id": doc.id, **doc.to_dict()} for doc in docs]
+
 # Initialize services
 user_service = UserService()
 ship_service = ShipService()
@@ -1728,3 +1749,4 @@ candidate_service = CandidateService()
 dg_communication_service = DGCommunicationService()
 invoice_service = InvoiceService()
 client_service = ClientService()
+submission_service = FormSubmissionService()

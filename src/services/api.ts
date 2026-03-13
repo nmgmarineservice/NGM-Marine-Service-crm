@@ -326,6 +326,7 @@ export interface PMSTaskResponse {
   approved_by?: string;
   created_at: string;
   updated_at: string;
+  is_form?: boolean;
 }
 
 export interface PMSTaskCreate {
@@ -392,6 +393,7 @@ export interface MyTasksResponse {
   in_progress_tasks?: number;
   completed_tasks?: number;
   overdue_tasks?: number;
+  pending_submissions?: number;
   ships?: ShipResponse[];
   total_ships?: number;
   total_crew?: number;

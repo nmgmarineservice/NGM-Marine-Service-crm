@@ -175,6 +175,14 @@ export function Dashboard() {
           icon: AlertCircle,
           chartData: [myTasks.overdue_tasks || 0, myTasks.overdue_tasks || 0, myTasks.overdue_tasks || 0, myTasks.overdue_tasks || 0, myTasks.overdue_tasks || 0, myTasks.overdue_tasks || 0],
         },
+        {
+          title: "Submissions",
+          value: myTasks.pending_submissions?.toString() || "0",
+          change: "0",
+          trend: "up" as const,
+          icon: CheckCircle2,
+          chartData: [myTasks.pending_submissions || 0, myTasks.pending_submissions || 0, myTasks.pending_submissions || 0, myTasks.pending_submissions || 0, myTasks.pending_submissions || 0, myTasks.pending_submissions || 0],
+        },
       ];
     } else if (isStaff && myTasks) {
       // Staff sees only their assigned vessel's data
@@ -218,6 +226,14 @@ export function Dashboard() {
           trend: "down" as const,
           icon: AlertCircle,
           chartData: [myTasks.overdue_tasks || 0, myTasks.overdue_tasks || 0, myTasks.overdue_tasks || 0, myTasks.overdue_tasks || 0, myTasks.overdue_tasks || 0, myTasks.overdue_tasks || 0],
+        },
+        {
+          title: "Submissions",
+          value: myTasks.pending_submissions?.toString() || "0",
+          change: "0",
+          trend: "up" as const,
+          icon: CheckCircle2,
+          chartData: [myTasks.pending_submissions || 0, myTasks.pending_submissions || 0, myTasks.pending_submissions || 0, myTasks.pending_submissions || 0, myTasks.pending_submissions || 0, myTasks.pending_submissions || 0],
         },
       ];
     }
@@ -290,7 +306,7 @@ export function Dashboard() {
       {!loading && !error && (
         <div
           className={`grid grid-cols-1 md:grid-cols-2 ${
-            isMaster ? "lg:grid-cols-5" : "lg:grid-cols-4"
+            isMaster || isCrew || isStaff ? "lg:grid-cols-3 xl:grid-cols-6" : "lg:grid-cols-4"
           } gap-6`}
         >
           {dashboardKpiData.map((kpi, index) => {
@@ -378,7 +394,18 @@ export function Dashboard() {
                     <Badge variant={task.status === 'overdue' ? 'destructive' : 'secondary'}>
                       {task.status}
                     </Badge>
-                    <Button size="sm" variant="outline" onClick={() => window.location.hash = 'pms'}>
+                    {task.is_form && <Badge className="bg-blue-100 text-blue-800 border-blue-200">Form</Badge>}
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      onClick={() => {
+                        if (task.is_form) {
+                           window.location.href = '/documents/submissions';
+                        } else {
+                           window.location.hash = 'pms';
+                        }
+                      }}
+                    >
                       View
                     </Button>
                   </div>

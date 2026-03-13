@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from typing import List, Optional
 from app.schemas import *
-from app.database import user_service, ship_service, pms_service, worklog_service, invoice_service
+from app.database import user_service, ship_service, pms_service, worklog_service, invoice_service, submission_service
 from app.auth import get_current_user, require_master
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
@@ -31,15 +31,26 @@ async def get_fleet_summary(current_user: UserResponse = Depends(get_current_use
         # Optimize: Fetch ALL tasks once instead of per ship
         if ship_filter:
             all_fleet_tasks = await pms_service.get_tasks_by_ship(ship_filter)
+            all_fleet_submissions = await submission_service.get_submissions_by_vessel(ship_filter)
         else:
             all_fleet_tasks = await pms_service.get_all_tasks()
+            # Simple way to get all submissions
+            submissions_docs = submission_service.db.collection('form_submissions').stream()
+            all_fleet_submissions = [{"id": d.id, **d.to_dict()} for d in submissions_docs]
             
-        # Group tasks by ship_id
+        # Group tasks and submissions by ship_id
         tasks_by_ship = {}
         for task in all_fleet_tasks:
             if task.ship_id not in tasks_by_ship:
                 tasks_by_ship[task.ship_id] = []
             tasks_by_ship[task.ship_id].append(task)
+            
+        submissions_by_ship = {}
+        for sub in all_fleet_submissions:
+            s_id = sub.get('vessel_id')
+            if s_id not in submissions_by_ship:
+                submissions_by_ship[s_id] = []
+            submissions_by_ship[s_id].append(sub)
         
         total_ships = len(ships)
         active_ships = len([ship for ship in ships if ship.status == ShipStatus.ACTIVE])
@@ -51,13 +62,17 @@ async def get_fleet_summary(current_user: UserResponse = Depends(get_current_use
         
         for ship in ships:
             ship_tasks = tasks_by_ship.get(ship.id, [])
+            ship_submissions = submissions_by_ship.get(ship.id, [])
             
             pending_pms = len([t for t in ship_tasks if t.status == TaskStatus.PENDING])
             overdue_pms = len([t for t in ship_tasks if t.status == TaskStatus.OVERDUE])
             pending_approvals = len([t for t in ship_tasks if t.status == TaskStatus.COMPLETED])
             
+            # Count forms awaiting approval
+            pending_form_approvals = len([s for s in ship_submissions if s.get('status') == 'submitted'])
+            
             total_pending_pms += pending_pms + overdue_pms
-            total_pending_approvals += pending_approvals
+            total_pending_approvals += pending_approvals + pending_form_approvals
             
             ships_stats.append(ShipStats(
                 ship_id=ship.id,
@@ -97,18 +112,34 @@ async def get_my_tasks(current_user: UserResponse = Depends(get_current_user)):
         ship_tasks = await pms_service.get_tasks_by_ship(current_user.ship_id)
         my_tasks = [task for task in ship_tasks if task.assigned_to == current_user.id]
         
+        # Get crew's assigned submissions
+        my_submissions = await submission_service.get_submissions_by_user(current_user.id, status='pending')
+        
         # Get ship info
         ship = await ship_service.get_ship_by_id(current_user.ship_id)
         ship_name = ship.name if ship else "Unknown Ship"
         
+        # Transform submissions to look like tasks for the dashboard list
+        submission_tasks = []
+        for sub in my_submissions:
+            submission_tasks.append({
+                "id": sub["id"],
+                "task_description": sub.get("template_name", "Form Submission"),
+                "equipment_name": "Required Form",
+                "status": sub.get("status", "pending"),
+                "due_date": sub.get("assigned_at"), # Use assigned_at as a proxy if no due_date
+                "is_form": True
+            })
+            
         return {
-            "tasks": my_tasks,
+            "tasks": my_tasks + submission_tasks,
             "ship_name": ship_name,
-            "total_tasks": len(my_tasks),
-            "pending_tasks": len([t for t in my_tasks if t.status == TaskStatus.PENDING]),
+            "total_tasks": len(my_tasks) + len(my_submissions),
+            "pending_tasks": len([t for t in my_tasks if t.status == TaskStatus.PENDING]) + len(my_submissions),
             "in_progress_tasks": len([t for t in my_tasks if t.status == TaskStatus.IN_PROGRESS]),
             "completed_tasks": len([t for t in my_tasks if t.status == TaskStatus.COMPLETED]),
-            "overdue_tasks": len([t for t in my_tasks if t.status == TaskStatus.OVERDUE])
+            "overdue_tasks": len([t for t in my_tasks if t.status == TaskStatus.OVERDUE]),
+            "pending_submissions": len(my_submissions)
         }
     
     elif current_user.role == UserRole.STAFF:
@@ -120,15 +151,17 @@ async def get_my_tasks(current_user: UserResponse = Depends(get_current_user)):
         ship_name = ship.name if ship else "Unknown Ship"
         all_users = await user_service.get_all_users()
         ship_tasks = await pms_service.get_tasks_by_ship(current_user.ship_id)
+        ship_submissions = await submission_service.get_submissions_by_vessel(current_user.ship_id)
         
         return {
             "ship_id": current_user.ship_id,
             "ship_name": ship_name,
             "total_crew": len([u for u in all_users if u.role == UserRole.CREW and u.ship_id == current_user.ship_id]),
-            "pending_tasks": len([t for t in ship_tasks if t.status == TaskStatus.PENDING]),
+            "pending_tasks": len([t for t in ship_tasks if t.status == TaskStatus.PENDING]) + len([s for s in ship_submissions if s.get('status') == 'pending']),
             "in_progress_tasks": len([t for t in ship_tasks if t.status == TaskStatus.IN_PROGRESS]),
             "completed_tasks": len([t for t in ship_tasks if t.status == TaskStatus.COMPLETED]),
-            "overdue_tasks": len([t for t in ship_tasks if t.status == TaskStatus.OVERDUE])
+            "overdue_tasks": len([t for t in ship_tasks if t.status == TaskStatus.OVERDUE]),
+            "pending_submissions": len([s for s in ship_submissions if s.get('status') == 'pending'])
         }
     
     elif current_user.role == UserRole.MASTER:
