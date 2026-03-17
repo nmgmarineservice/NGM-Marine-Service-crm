@@ -73,6 +73,7 @@ async def delete_manual(
 # --- FORM TEMPLATES (Layer 2) ---
 
 @router.post("/templates", response_model=FormTemplateResponse)
+@router.post("/templates/", response_model=FormTemplateResponse)
 async def create_template(
     template: FormTemplateCreate,
     current_user: UserResponse = Depends(require_role([UserRole.STAFF, UserRole.MASTER]))
@@ -95,6 +96,7 @@ async def create_template(
         raise HTTPException(status_code=400, detail=str(e))
 
 @router.get("/templates", response_model=List[FormTemplateResponse])
+@router.get("/templates/", response_model=List[FormTemplateResponse])
 async def get_templates(
     category: Optional[FormCategory] = None,
     current_user: UserResponse = Depends(require_role([UserRole.STAFF, UserRole.MASTER]))
@@ -109,15 +111,21 @@ async def get_templates(
         templates = []
         for doc in docs:
             try:
-                templates.append(FormTemplateResponse(id=doc.id, **doc.to_dict()))
+                doc_data = doc.to_dict()
+                # Sanitize data to prevent Pydantic validation errors
+                sanitized = sanitize_template_data(doc.id, doc_data)
+                templates.append(FormTemplateResponse(**sanitized))
             except Exception as parse_err:
                 print(f"⚠️ Skipping template {doc.id}: {parse_err}")
                 continue
         return templates
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=400, detail=str(e))
 
 @router.get("/templates/{template_id}", response_model=FormTemplateResponse)
+@router.get("/templates/{template_id}/", response_model=FormTemplateResponse)
 async def get_template(
     template_id: str,
     current_user: UserResponse = Depends(get_current_user)
@@ -129,9 +137,77 @@ async def get_template(
         if not doc.exists:
             raise HTTPException(status_code=404, detail="Template not found")
         
-        return FormTemplateResponse(id=doc.id, **doc.to_dict())
+        doc_data = doc.to_dict()
+        try:
+            # Try parsing directly first
+            return FormTemplateResponse(id=doc.id, **doc_data)
+        except Exception:
+            # Fallback: Sanitize and try again
+            try:
+                sanitized = sanitize_template_data(doc.id, doc_data)
+                return FormTemplateResponse(**sanitized)
+            except Exception as e:
+                print(f"❌ Failed to parse template {doc.id} even after sanitization: {e}")
+                raise HTTPException(status_code=400, detail=f"Malformed template data: {str(e)}")
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+def sanitize_template_data(doc_id: str, data: dict) -> dict:
+    """Helper to ensure old/malformed template data matches the Pydantic schema."""
+    if data is None: data = {}
+    
+    # Ensure ID and Name are present
+    data["id"] = doc_id
+    if not data.get("name"):
+        data["name"] = data.get("template_name") or "Untitled Template"
+    
+    # Sanitize Enums (Firestore might have stored them as maps or objects)
+    def to_val(v, default):
+        if v is None: return default
+        if isinstance(v, dict) and "value" in v: return v["value"]
+        if isinstance(v, str): return v
+        return default
+
+    data["category"] = to_val(data.get("category"), "Checklist")
+    data["scheduled"] = to_val(data.get("scheduled"), "weekly")
+    data["role"] = to_val(data.get("role"), "crew")
+    
+    # Ensure booleans
+    if "approval_required" not in data or data["approval_required"] is None:
+        data["approval_required"] = True
+        
+    # Ensure lists
+    if "fields" not in data or not isinstance(data["fields"], list):
+        data["fields"] = []
+    
+    # Ensure fields are valid
+    sanitized_fields = []
+    for f in data["fields"]:
+        if not isinstance(f, dict): continue
+        # Each field needs id, label, type at minimum
+        if not f.get("id"): f["id"] = f"f_{len(sanitized_fields)}"
+        if not f.get("label"): f["label"] = "Unnamed Field"
+        if not f.get("type"): f["type"] = "text"
+        sanitized_fields.append(f)
+    
+    # If no fields and no document data, add a placeholder field so it's not empty
+    if not sanitized_fields and not data.get("document_data") and not data.get("spreadsheet_data"):
+        sanitized_fields.append({
+            "id": "f_placeholder",
+            "label": "Note",
+            "type": "text",
+            "default_value": "This template was imported without structural fields. Please use it for reference or upload a filled copy if applicable."
+        })
+    data["fields"] = sanitized_fields
+
+    # Ensure metadata
+    if not data.get("created_by"): data["created_by"] = "system"
+    if not data.get("created_at"): data["created_at"] = datetime.utcnow()
+    if not data.get("updated_at"): data["updated_at"] = datetime.utcnow()
+    
+    return data
 
 @router.put("/templates/{template_id}", response_model=FormTemplateResponse)
 @router.put("/templates/{template_id}/", response_model=FormTemplateResponse)
@@ -194,6 +270,7 @@ async def bulk_delete_templates(
 # --- FORM SUBMISSIONS (Layer 3) ---
 
 @router.post("/trigger-work", response_model=List[FormSubmissionResponse])
+@router.post("/trigger-work/", response_model=List[FormSubmissionResponse])
 async def trigger_work(
     request: TriggerWorkRequest,
     current_user: UserResponse = Depends(require_role([UserRole.STAFF, UserRole.MASTER]))
@@ -336,6 +413,7 @@ async def update_submission(
         raise HTTPException(status_code=400, detail=str(e))
 
 @router.post("/submissions/{submission_id}/approve", response_model=FormSubmissionResponse)
+@router.post("/submissions/{submission_id}/approve/", response_model=FormSubmissionResponse)
 async def approve_submission(
     submission_id: str,
     current_user: UserResponse = Depends(require_master)
@@ -375,6 +453,7 @@ async def approve_submission(
         raise HTTPException(status_code=400, detail=str(e))
 
 @router.get("/submissions", response_model=List[FormSubmissionResponse])
+@router.get("/submissions/", response_model=List[FormSubmissionResponse])
 async def get_submissions(
     vessel_id: Optional[str] = None,
     status: Optional[FormStatus] = None,
@@ -424,6 +503,7 @@ async def get_submissions(
         raise HTTPException(status_code=400, detail=str(e))
 
 @router.delete("/submissions/{submission_id}")
+@router.delete("/submissions/{submission_id}/")
 async def delete_submission(
     submission_id: str,
     current_user: UserResponse = Depends(require_role([UserRole.STAFF, UserRole.MASTER]))

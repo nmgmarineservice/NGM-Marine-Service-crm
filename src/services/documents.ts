@@ -131,7 +131,7 @@ export const documentService = {
         if (params?.status) queryParams.append('status', params.status);
         if (params?.template_id) queryParams.append('template_id', params.template_id);
         const qs = queryParams.toString();
-        return apiRequest<FormSubmission[]>(`/documents/submissions/${qs ? `?${qs}` : ''}`);
+        return apiRequest<FormSubmission[]>(`/documents/submissions/${qs ? `?${qs}` : ''}/`);
     },
 
     triggerWork: async (data: TriggerWorkRequest) => {

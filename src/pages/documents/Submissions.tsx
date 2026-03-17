@@ -214,8 +214,13 @@ export default function Submissions() {
     const handleFill = async (sub: FormSubmission, e: React.MouseEvent) => {
         e.stopPropagation();
         try {
-            const { data: template } = await documentService.getTemplate(sub.template_id);
-            setActiveTemplate(template);
+            const response = await documentService.getTemplate(sub.template_id);
+            if (!response.data) {
+                console.error("Failed to load template:", response.error);
+                toast.error(response.error || "Failed to load form template");
+                return;
+            }
+            setActiveTemplate(response.data);
             setActiveSubmission(sub);
             setFormData(sub.filled_data || {});
             setFillOpen(true);
