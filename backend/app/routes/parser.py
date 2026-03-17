@@ -88,15 +88,15 @@ async def bulk_import_to_templates(
             parsed = SmartParser.parse_to_form(content, file.filename)
             file_url = save_upload_file(file)
             
-            # Create template data
+            # Create template data - use .value for enums so Firestore stores plain strings
             template_data = {
                 "name": parsed["title"],
-                "category": FormCategory.CHECKLIST, # Default
+                "category": FormCategory.CHECKLIST.value,
                 "description": f"Auto-imported from {file.filename}",
                 "fields": parsed["fields"],
                 "approval_required": True,
-                "scheduled": ScheduleFrequency.WEEKLY,
-                "role": AssignedRole.CREW,
+                "scheduled": ScheduleFrequency.WEEKLY.value,
+                "role": AssignedRole.CREW.value,
                 "document_data": {
                     "file_name": file.filename,
                     "file_url": file_url,

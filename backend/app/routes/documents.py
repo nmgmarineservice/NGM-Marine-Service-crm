@@ -106,7 +106,13 @@ async def get_templates(
             query = query.where('category', '==', category)
             
         docs = query.stream()
-        templates = [FormTemplateResponse(id=doc.id, **doc.to_dict()) for doc in docs]
+        templates = []
+        for doc in docs:
+            try:
+                templates.append(FormTemplateResponse(id=doc.id, **doc.to_dict()))
+            except Exception as parse_err:
+                print(f"⚠️ Skipping template {doc.id}: {parse_err}")
+                continue
         return templates
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
