@@ -304,8 +304,82 @@ class PDFParser:
 
 class SmartParser:
     @staticmethod
+    def _extract_text_from_doc_binary(file_content: bytes) -> str:
+        """
+        Pure-Python fallback: Extract readable text from .doc binary (OLE2 format).
+        No external tools needed. Works on any OS.
+        """
+        import struct
+        
+        text_parts = []
+        
+        # Method 1: Try OLE2 WordDocument stream extraction
+        try:
+            # OLE2 magic number check
+            if file_content[:8] == b'\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1':
+                # This is a valid OLE2 file, try to find text in the compound doc
+                # Look for the FIB (File Information Block) and extract text
+                # The text in Word binary is stored as UTF-16LE after specific markers
+                
+                # Extract UTF-16LE text spans (Word stores text as UTF-16)
+                decoded_chunks = []
+                i = 0
+                while i < len(file_content) - 1:
+                    # Look for sequences of printable UTF-16LE characters
+                    chunk_start = i
+                    chars = []
+                    while i < len(file_content) - 1:
+                        code = struct.unpack_from('<H', file_content, i)[0]
+                        # Printable ASCII range in UTF-16LE, plus common chars
+                        if (0x20 <= code <= 0x7E) or code in (0x09, 0x0A, 0x0D, 0x2013, 0x2014, 0x2018, 0x2019, 0x201C, 0x201D):
+                            chars.append(chr(code))
+                            i += 2
+                        else:
+                            break
+                    
+                    if len(chars) >= 4:  # Only keep chunks of 4+ chars
+                        decoded_chunks.append(''.join(chars))
+                    i += 2
+                
+                if decoded_chunks:
+                    # Find the longest meaningful text blocks
+                    long_chunks = [c for c in decoded_chunks if len(c) >= 6]
+                    if long_chunks:
+                        text_parts.extend(long_chunks)
+        except Exception:
+            pass
+        
+        # Method 2: Simple ASCII/Latin1 extraction fallback
+        if not text_parts:
+            try:
+                text = file_content.decode('latin-1', errors='ignore')
+                # Remove control characters but keep newlines and tabs
+                cleaned = re.sub(r'[^\x09\x0a\x0d\x20-\x7e\xa0-\xff]', ' ', text)
+                # Split on large gaps of spaces (indicating field boundaries in Word)
+                cleaned = re.sub(r' {4,}', '\n', cleaned)
+                cleaned = re.sub(r'\n{3,}', '\n\n', cleaned)
+                if len(cleaned.strip()) > 20:
+                    text_parts = [cleaned.strip()]
+            except Exception:
+                pass
+        
+        full_text = '\n'.join(text_parts)
+        
+        # Clean up noise common in .doc binary extraction
+        # Remove very short lines that are likely binary artifacts
+        lines = full_text.split('\n')
+        clean_lines = []
+        for line in lines:
+            stripped = line.strip()
+            # Keep lines that look like real text (3+ chars, not all special chars)
+            if len(stripped) >= 2 and re.search(r'[a-zA-Z0-9]', stripped):
+                clean_lines.append(stripped)
+        
+        return '\n'.join(clean_lines)
+
+    @staticmethod
     def _convert_doc_to_docx(file_content: bytes) -> bytes:
-        """Helper to convert .doc to .docx across platforms"""
+        """Helper to convert .doc to .docx across platforms. Returns None if no conversion tool available."""
         tmp_doc = None
         tmp_docx = None
         try:
@@ -319,40 +393,36 @@ class SmartParser:
 
             # Prioritize OS-specific best tools
             if os.name == 'nt':
-                if win32 is None:
-                    raise ValueError(f"Windows requires pywin32. Error: {win32_error}")
-                
-                pythoncom.CoInitialize()
-                try:
-                    word = win32.Dispatch("Word.Application")
-                    word.Visible = False
-                    doc = word.Documents.Open(abspath_doc)
-                    doc.SaveAs2(abspath_docx, FileFormat=12) # 12 = wdFormatXMLDocument
-                    doc.Close()
-                    word.Quit()
-                finally:
-                    pythoncom.CoUninitialize()
+                if win32 is not None:
+                    pythoncom.CoInitialize()
+                    try:
+                        word = win32.Dispatch("Word.Application")
+                        word.Visible = False
+                        doc = word.Documents.Open(abspath_doc)
+                        doc.SaveAs2(abspath_docx, FileFormat=12)
+                        doc.Close()
+                        word.Quit()
+                    finally:
+                        pythoncom.CoUninitialize()
             else:
-                # Linux/Mac logic: Try Pandoc first, then LibreOffice
+                # Linux/Mac: Try Pandoc first, then LibreOffice
                 if shutil.which("pandoc"):
                     subprocess.run(["pandoc", abspath_doc, "-o", abspath_docx], check=False, capture_output=True)
                 
                 soft = shutil.which("soffice") or shutil.which("libreoffice")
                 if not os.path.exists(abspath_docx) and soft:
-                    # Try LibreOffice
                     tmp_dir = os.path.dirname(abspath_doc)
                     subprocess.run([soft, "--headless", "--convert-to", "docx", "--outdir", tmp_dir, abspath_doc], check=False, capture_output=True)
-                    # Check if it created the file (soffice might use original base name)
                     expected_out = abspath_doc.rsplit('.', 1)[0] + ".docx"
                     if os.path.exists(expected_out) and expected_out != abspath_docx:
                         shutil.move(expected_out, abspath_docx)
 
-            if not os.path.exists(abspath_docx):
-                env_msg = "Please use .docx format or ensure 'pandoc' is installed on the server." if os.name != 'nt' else "Please use .docx format or ensure Microsoft Word is installed."
-                raise ValueError(f"Could not convert .doc to .docx on this environment. {env_msg}")
- 
-            with open(abspath_docx, "rb") as f:
-                return f.read()
+            if os.path.exists(abspath_docx):
+                with open(abspath_docx, "rb") as f:
+                    return f.read()
+            
+            # No conversion tool available
+            return None
         finally:
             if tmp_doc and os.path.exists(tmp_doc):
                 try: os.remove(tmp_doc)
@@ -365,10 +435,52 @@ class SmartParser:
     def parse_to_form(file_content: bytes, filename: str):
         fn = filename.lower()
         try:
-            if fn.endswith('.doc'):
-                file_content = SmartParser._convert_doc_to_docx(file_content)
-                raw = WordParser.extract(file_content)
- 
+            if fn.endswith('.doc') and not fn.endswith('.docx'):
+                # Try converting to .docx first (best quality)
+                docx_content = SmartParser._convert_doc_to_docx(file_content)
+                if docx_content:
+                    print(f"✅ .doc converted to .docx successfully for: {filename}")
+                    raw = WordParser.extract(docx_content)
+                else:
+                    # Fallback: Pure-Python binary text extraction (no tools needed)
+                    print(f"⚠️ No conversion tools available. Using pure-Python .doc extraction for: {filename}")
+                    extracted_text = SmartParser._extract_text_from_doc_binary(file_content)
+                    if not extracted_text or len(extracted_text) < 10:
+                        raise ValueError("Could not extract text from .doc file. Please convert to .docx format for better results.")
+                    
+                    # Build a raw structure similar to what WordParser returns
+                    paragraphs = [line for line in extracted_text.split('\n') if line.strip()]
+                    
+                    # Try to detect tables (lines with tab-separated values)
+                    tables = []
+                    regular_paragraphs = []
+                    current_table = []
+                    for para in paragraphs:
+                        if '\t' in para:
+                            current_table.append(para.split('\t'))
+                        else:
+                            if current_table:
+                                tables.append(current_table)
+                                current_table = []
+                            regular_paragraphs.append(para)
+                    if current_table:
+                        tables.append(current_table)
+                    
+                    # Detect key:value metadata from paragraphs
+                    metadata = {}
+                    for para in regular_paragraphs:
+                        if ':' in para:
+                            parts = para.split(':', 1)
+                            if len(parts) == 2 and len(parts[0].strip()) < 50:
+                                metadata[parts[0].strip()] = parts[1].strip()
+                    
+                    raw = {
+                        "paragraphs": regular_paragraphs,
+                        "tables": tables,
+                        "metadata": metadata,
+                        "raw_text": extracted_text
+                    }
+
             elif fn.endswith('.docx'): raw = WordParser.extract(file_content)
             elif fn.endswith('.pdf'): raw = PDFParser.extract(file_content)
             elif fn.endswith(('.xlsx', '.xls', '.csv')):
