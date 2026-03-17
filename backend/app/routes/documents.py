@@ -16,6 +16,7 @@ router = APIRouter(prefix="/documents", tags=["documents"])
 # --- MANUALS (Layer 1) ---
 
 @router.post("/manuals", response_model=ManualResponse)
+@router.post("/manuals/", response_model=ManualResponse)
 async def create_manual(
     manual: ManualCreate,
     current_user: UserResponse = Depends(require_role([UserRole.STAFF, UserRole.MASTER]))
@@ -38,6 +39,7 @@ async def create_manual(
         raise HTTPException(status_code=400, detail=str(e))
 
 @router.get("/manuals", response_model=List[ManualResponse])
+@router.get("/manuals/", response_model=List[ManualResponse])
 async def get_manuals(
     type: Optional[ManualType] = None,
     current_user: UserResponse = Depends(get_current_user)
@@ -55,6 +57,7 @@ async def get_manuals(
         raise HTTPException(status_code=400, detail=str(e))
 
 @router.delete("/manuals/{manual_id}")
+@router.delete("/manuals/{manual_id}/")
 async def delete_manual(
     manual_id: str,
     current_user: UserResponse = Depends(require_role([UserRole.STAFF, UserRole.MASTER]))

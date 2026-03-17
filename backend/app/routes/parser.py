@@ -16,12 +16,13 @@ router = APIRouter(prefix="/parser", tags=["parser"])
 ROOT_DIR = Path(__file__).resolve().parent.parent.parent.parent
 UPLOAD_DIR = ROOT_DIR / "files"
 
-def save_upload_file(file: UploadFile, subcategory: str = None) -> str:
-    category = "LAYER_2_FORM_TEMPLATES"
+def save_upload_file(file: UploadFile, category: str = "LAYER_2_FORM_TEMPLATES", subcategory: str = None) -> str:
     target_dir = UPLOAD_DIR / category
-    if subcategory:
-        cleaned_sub = "".join(c for c in subcategory if c.isalnum() or c in (' ', '_', '-')).strip()
-        target_dir = target_dir / cleaned_sub
+    sub_folder = ""
+    if subcategory and subcategory.lower() != "none":
+        sub_folder = "".join(c for c in subcategory if c.isalnum() or c in (' ', '_', '-')).strip()
+        if sub_folder:
+            target_dir = target_dir / sub_folder
     
     target_dir.mkdir(parents=True, exist_ok=True)
     file_path = target_dir / file.filename
@@ -32,7 +33,10 @@ def save_upload_file(file: UploadFile, subcategory: str = None) -> str:
     with file_path.open("wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
         
-    url = f"/files/{category}/{subcategory}/{file.filename}" if subcategory else f"/files/{category}/{file.filename}"
+    if sub_folder:
+        url = f"/files/{category}/{sub_folder}/{file.filename}"
+    else:
+        url = f"/files/{category}/{file.filename}"
     return url
 
 @router.post("/word-to-form")

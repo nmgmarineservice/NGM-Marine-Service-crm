@@ -29,26 +29,38 @@ async def upload_file(
 
         # Ensure directory exists
         target_dir = UPLOAD_DIR / category
-        if subcategory:
+        sub_folder = ""
+        if subcategory and subcategory.lower() != "none":
             # Basic validation for subcategory name
-            subcategory = "".join(c for c in subcategory if c.isalnum() or c in (' ', '_', '-')).strip()
-            target_dir = target_dir / subcategory
+            sub_folder = "".join(c for c in subcategory if c.isalnum() or c in (' ', '_', '-')).strip()
+            if sub_folder:
+                target_dir = target_dir / sub_folder
             
         target_dir.mkdir(parents=True, exist_ok=True)
 
         # Generate safe filename
         file_path = target_dir / file.filename
         
-        # Save file
+        # Save file (ensure we are at start)
+        file.file.seek(0)
         with file_path.open("wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
 
         # Return the public URL (assumes files are served at /files)
-        url = f"/files/{category}/{subcategory}/{file.filename}" if subcategory else f"/files/{category}/{file.filename}"
+        # Consistently handle subfolder in URL
+        if sub_folder:
+            url = f"/files/{category}/{sub_folder}/{file.filename}"
+        else:
+            url = f"/files/{category}/{file.filename}"
+            
         return {
             "filename": file.filename,
-            "url": url
+            "url": url,
+            "category": category,
+            "subcategory": sub_folder
         }
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         print(f"Upload error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
