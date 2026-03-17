@@ -8,6 +8,7 @@ from typing import Dict, Any, List
 from pathlib import Path
 import shutil
 import os
+from app.schemas.documents import FormCategory, ScheduleFrequency, AssignedRole
 
 router = APIRouter(prefix="/parser", tags=["parser"])
 
@@ -81,13 +82,13 @@ async def bulk_import_to_templates(
 
     for file in files:
         try:
+            print(f"📦 Processing bulk import for: {file.filename}")
             file.file.seek(0)
             content = await file.read()
             parsed = SmartParser.parse_to_form(content, file.filename)
             file_url = save_upload_file(file)
             
             # Create template data
-            from app.schemas.documents import FormCategory, ScheduleFrequency, AssignedRole
             template_data = {
                 "name": parsed["title"],
                 "category": FormCategory.CHECKLIST, # Default
@@ -110,6 +111,7 @@ async def bulk_import_to_templates(
             doc_ref = db.collection('form_templates').document()
             batch.set(doc_ref, template_data)
             
+            print(f"✅ Success: Parsed {file.filename} -> ID: {doc_ref.id}")
             results.append({
                 "filename": file.filename,
                 "status": "success",
@@ -117,12 +119,12 @@ async def bulk_import_to_templates(
                 "name": parsed["title"]
             })
         except Exception as e:
+            print(f"❌ Error: Bulk import failed for {file.filename}: {str(e)}")
             results.append({
                 "filename": file.filename,
                 "status": "error",
                 "error": str(e)
             })
-            print(f"Error importing {file.filename}: {e}")
 
     try:
         batch.commit()

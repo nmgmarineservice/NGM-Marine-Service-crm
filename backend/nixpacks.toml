@@ -1,0 +1,6 @@
+[phases.setup]
+nixPkgs = ["python311", "pandoc", "libreoffice"]
+
+[phases.install]
+dependsOn = ["setup"]
+cmds = ["pip install -r requirements.txt"]

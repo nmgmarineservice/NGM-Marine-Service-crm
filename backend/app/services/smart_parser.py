@@ -6,6 +6,8 @@ import pandas as pd
 import traceback
 import os
 import tempfile
+import subprocess
+import shutil
 # Only works on Windows with Word installed
 try:
     import win32com.client as win32
@@ -55,7 +57,7 @@ class BaseParser:
                 "label": clean_key,
                 "type": field_type,
                 "required": False,
-                "value": value
+                "default_value": value
             })
 
         # 2. Map tables - with Layout-to-Metadata promotion
@@ -100,7 +102,7 @@ class BaseParser:
                                     "id": f"f_meta_{len(fields)}",
                                     "label": ck,
                                     "type": "date" if "date" in ck.lower() else "text",
-                                    "value": v
+                                    "default_value": v
                                 })
                 continue
             
@@ -128,7 +130,7 @@ class BaseParser:
                                 "id": f"f_kv_{len(fields)}",
                                 "label": k,
                                 "type": "date" if "date" in k.lower() else "text",
-                                "value": v
+                                "default_value": v
                             })
                     continue
 
@@ -302,45 +304,71 @@ class PDFParser:
 
 class SmartParser:
     @staticmethod
-    def parse_to_form(file_content: bytes, filename: str):
-        fn = filename.lower()
-        head = file_content[:8]
+    def _convert_doc_to_docx(file_content: bytes) -> bytes:
+        """Helper to convert .doc to .docx across platforms"""
+        tmp_doc = None
+        tmp_docx = None
         try:
-            if fn.endswith('.doc'):
+            with tempfile.NamedTemporaryFile(suffix=".doc", delete=False) as tmp:
+                tmp.write(file_content)
+                tmp_doc = tmp.name
+            
+            tmp_docx = tmp_doc + "x"
+            abspath_doc = os.path.abspath(tmp_doc)
+            abspath_docx = os.path.abspath(tmp_docx)
+
+            # Prioritize OS-specific best tools
+            if os.name == 'nt':
                 if win32 is None:
-                    raise ValueError(f"Server cannot parse .doc. Import error: {win32_error}. Try restarting the backend server to load new dependencies.")
+                    raise ValueError(f"Windows requires pywin32. Error: {win32_error}")
                 
-                # Convert .doc to .docx
                 pythoncom.CoInitialize()
-                tmp_doc = None
-                tmp_docx = None
                 try:
-                    with tempfile.NamedTemporaryFile(suffix=".doc", delete=False) as tmp:
-                        tmp.write(file_content)
-                        tmp_doc = tmp.name
-                    
-                    tmp_docx = tmp_doc + "x" # .docx
-                    abspath_doc = os.path.abspath(tmp_doc)
-                    abspath_docx = os.path.abspath(tmp_docx)
-                    
                     word = win32.Dispatch("Word.Application")
                     word.Visible = False
                     doc = word.Documents.Open(abspath_doc)
                     doc.SaveAs2(abspath_docx, FileFormat=12) # 12 = wdFormatXMLDocument
                     doc.Close()
-                    
-                    with open(abspath_docx, "rb") as f:
-                        file_content = f.read()
-                        
-                    raw = WordParser.extract(file_content)
-                    
-                except Exception as e:
-                    raise ValueError(f"Failed to convert .doc file: {str(e)}")
+                    word.Quit()
                 finally:
-                    if tmp_doc and os.path.exists(tmp_doc): os.remove(tmp_doc)
-                    if tmp_docx and os.path.exists(tmp_docx): os.remove(tmp_docx)
                     pythoncom.CoUninitialize()
+            else:
+                # Linux/Mac logic: Try Pandoc first, then LibreOffice
+                if shutil.which("pandoc"):
+                    subprocess.run(["pandoc", abspath_doc, "-o", abspath_docx], check=False, capture_output=True)
+                
+                soft = shutil.which("soffice") or shutil.which("libreoffice")
+                if not os.path.exists(abspath_docx) and soft:
+                    # Try LibreOffice
+                    tmp_dir = os.path.dirname(abspath_doc)
+                    subprocess.run([soft, "--headless", "--convert-to", "docx", "--outdir", tmp_dir, abspath_doc], check=False, capture_output=True)
+                    # Check if it created the file (soffice might use original base name)
+                    expected_out = abspath_doc.rsplit('.', 1)[0] + ".docx"
+                    if os.path.exists(expected_out) and expected_out != abspath_docx:
+                        shutil.move(expected_out, abspath_docx)
 
+            if not os.path.exists(abspath_docx):
+                env_msg = "Please use .docx format or ensure 'pandoc' is installed on the server." if os.name != 'nt' else "Please use .docx format or ensure Microsoft Word is installed."
+                raise ValueError(f"Could not convert .doc to .docx on this environment. {env_msg}")
+ 
+            with open(abspath_docx, "rb") as f:
+                return f.read()
+        finally:
+            if tmp_doc and os.path.exists(tmp_doc):
+                try: os.remove(tmp_doc)
+                except: pass
+            if tmp_docx and os.path.exists(tmp_docx):
+                try: os.remove(tmp_docx)
+                except: pass
+
+    @staticmethod
+    def parse_to_form(file_content: bytes, filename: str):
+        fn = filename.lower()
+        try:
+            if fn.endswith('.doc'):
+                file_content = SmartParser._convert_doc_to_docx(file_content)
+                raw = WordParser.extract(file_content)
+ 
             elif fn.endswith('.docx'): raw = WordParser.extract(file_content)
             elif fn.endswith('.pdf'): raw = PDFParser.extract(file_content)
             elif fn.endswith(('.xlsx', '.xls', '.csv')):
