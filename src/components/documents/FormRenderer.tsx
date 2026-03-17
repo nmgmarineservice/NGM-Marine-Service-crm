@@ -15,6 +15,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { SpreadsheetGrid } from './SpreadsheetGrid';
 import { documentService } from '@/services/documents';
 import { toast } from 'sonner';
+import { API_BASE_URL } from '@/firebase';
 
 interface FormRendererProps {
     template: FormTemplate;
@@ -170,7 +171,10 @@ export const FormRenderer: React.FC<FormRendererProps> = ({ template, initialDat
                     </div>
                     
                      <div className="grid grid-cols-2 gap-4">
-                          <div className="border p-4 rounded bg-white text-center hover:bg-gray-50 cursor-pointer transition-colors" onClick={() => window.open(template.spreadsheet_data.file_url, '_blank')}>
+                          <div className="border p-4 rounded bg-white text-center hover:bg-gray-50 cursor-pointer transition-colors" onClick={() => {
+                              const url = template.spreadsheet_data.file_url;
+                              window.open(url?.startsWith('http') ? url : `${API_BASE_URL}${url}`, '_blank');
+                          }}>
                              <span className="block text-sm font-medium mb-1 text-gray-900">Step 1: Get Template</span>
                               <span className="text-xs text-blue-600 underline flex items-center justify-center gap-1">
                                  <Download className="w-3 h-3" /> Download {template.name}.xlsx
@@ -210,7 +214,10 @@ export const FormRenderer: React.FC<FormRendererProps> = ({ template, initialDat
                     </div>
                     
                     <div className="grid grid-cols-2 gap-4">
-                         <div className="border p-4 rounded bg-white text-center hover:bg-gray-50 cursor-pointer transition-colors" onClick={() => window.open(template.document_data.file_url, '_blank')}>
+                         <div className="border p-4 rounded bg-white text-center hover:bg-gray-50 cursor-pointer transition-colors" onClick={() => {
+                             const url = template.document_data.file_url;
+                             window.open(url?.startsWith('http') ? url : `${API_BASE_URL}${url}`, '_blank');
+                         }}>
                             <span className="block text-sm font-medium mb-1 text-gray-900">Step 1: Get Document</span>
                              <span className="text-xs text-blue-600 underline flex items-center justify-center gap-1">
                                 <Download className="w-3 h-3" /> Download Document

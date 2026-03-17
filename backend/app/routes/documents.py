@@ -75,9 +75,9 @@ async def delete_manual(
 @router.post("/templates", response_model=FormTemplateResponse)
 async def create_template(
     template: FormTemplateCreate,
-    current_user: UserResponse = Depends(require_role([UserRole.STAFF]))
+    current_user: UserResponse = Depends(require_role([UserRole.STAFF, UserRole.MASTER]))
 ):
-    """Create a new form template (Staff only)"""
+    """Create a new form template (Staff/Master)"""
     try:
         now = datetime.utcnow()
         doc_data = template.dict()
@@ -130,6 +130,32 @@ async def get_template(
             raise HTTPException(status_code=404, detail="Template not found")
         
         return FormTemplateResponse(id=doc.id, **doc.to_dict())
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@router.put("/templates/{template_id}", response_model=FormTemplateResponse)
+@router.put("/templates/{template_id}/", response_model=FormTemplateResponse)
+async def update_template(
+    template_id: str,
+    template: FormTemplateUpdate,
+    current_user: UserResponse = Depends(require_role([UserRole.STAFF, UserRole.MASTER]))
+):
+    """Update a form template (Staff/Master)"""
+    try:
+        doc_ref = db.collection('form_templates').document(template_id)
+        doc = doc_ref.get()
+        if not doc.exists:
+            raise HTTPException(status_code=404, detail="Template not found")
+        
+        update_data = {k: v for k, v in template.dict(exclude_unset=True).items()}
+        update_data["updated_at"] = datetime.utcnow()
+        
+        doc_ref.update(update_data)
+        
+        updated_doc = doc_ref.get()
+        return FormTemplateResponse(id=updated_doc.id, **updated_doc.to_dict())
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
