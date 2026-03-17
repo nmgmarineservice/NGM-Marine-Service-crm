@@ -6,6 +6,7 @@ import os
 from dotenv import load_dotenv
 from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 
+# Reloading to update dependencies: added pywin32 support for .doc files
 # Import all routes
 from app.routes.users import router as users_router
 from app.routes.ships import router as ships_router

@@ -18,3 +18,4 @@ python-pptx==0.6.21
 openpyxl==3.1.2
 xlrd==2.0.1
 google-cloud-firestore==2.13.1
+pywin32==306
