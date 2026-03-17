@@ -1,0 +1,5 @@
+D:\ALCAS\NGM-Marine-Service-crm\backend\scripts\seed_passage_plan.py
+D:\ALCAS\NGM-Marine-Service-crm\files\LAYER_2_FORM_TEMPLATES\FPMF -  02 - 01 - PASSAGE PLAN.doc
+D:\ALCAS\NGM-Marine-Service-crm\files\LAYER_2_FORM_TEMPLATES\Checklists\FPMF -  02 - 01 - PASSAGE PLAN.doc
+D:\ALCAS\NGM-Marine-Service-crm\files\LAYER_2_FORM_TEMPLATES\Checklists\FPMF -  02 - 18 - PASSAGE PLAN  ( PILOT STATION - BERTH - PILOT STATION ).xls
+D:\ALCAS\NGM-Marine-Service-crm\files\LAYER_2_FORM_TEMPLATES\HR\FPMF -  02 - 17 - PASSAGE PLAN APPRAISAL.xls

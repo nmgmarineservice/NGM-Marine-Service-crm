@@ -45,79 +45,52 @@ export default function Manuals() {
         }
     };
 
-    const handleDelete = (id: string, title: string) => {
+    const handleDelete = async (id: string, title: string) => {
         if (!window.confirm(`Are you sure you want to delete "${title}"?`)) return;
 
-        const manualToDelete = manuals.find(m => m.id === id);
-        if (!manualToDelete) return;
-
-        // Optimistic update
-        setManuals(prev => prev.filter(m => m.id !== id));
-        if (selectedIds.includes(id)) {
-            setSelectedIds(prev => prev.filter(i => i !== id));
-        }
-
-        const timeoutId = setTimeout(async () => {
-            try {
-                await documentService.deleteManual(id);
-            } catch (error) {
-                console.error('Failed to delete manual:', error);
-                toast.error('Failed to delete manual');
-                // Revert
-                setManuals(prev => [...prev, manualToDelete]);
+        try {
+            setDeleting(id);
+            const response = await documentService.deleteManual(id);
+            if (response.error) {
+                toast.error(response.error);
+                return;
             }
-        }, 5000); // 5 seconds to undo
-
-        toast(`Manual "${title}" deleted`, {
-            action: {
-                label: "Undo",
-                onClick: () => {
-                    clearTimeout(timeoutId);
-                    setManuals(prev => [...prev, manualToDelete]);
-                    if (selectedIds.includes(id)) {
-                        setSelectedIds(prev => [...prev, id]);
-                    }
-                }
-            },
-            duration: 4000,
-        });
+            
+            toast.success(`Manual "${title}" deleted permanently`);
+            setManuals(prev => prev.filter(m => m.id !== id));
+            if (selectedIds.includes(id)) {
+                setSelectedIds(prev => prev.filter(i => i !== id));
+            }
+        } catch (error) {
+            console.error('Failed to delete manual:', error);
+            toast.error('Failed to delete manual');
+        } finally {
+            setDeleting(null);
+        }
     };
 
-    const handleBulkDelete = () => {
+    const handleBulkDelete = async () => {
         if (!selectedIds.length) return;
         if (!window.confirm(`Are you sure you want to delete ${selectedIds.length} manuals?`)) return;
 
-        const manualsToDelete = manuals.filter(m => selectedIds.includes(m.id));
-        const idsToDelete = [...selectedIds];
-
-        // Optimistic update
-        setManuals(prev => prev.filter(m => !idsToDelete.includes(m.id)));
-        setSelectedIds([]);
-
-        const timeoutId = setTimeout(async () => {
-            try {
-                // Since we don't have a bulk delete endpoint for manuals yet, delete one by one
-                const promises = idsToDelete.map(id => documentService.deleteManual(id));
-                await Promise.all(promises);
-            } catch (error) {
-                console.error('Bulk delete failed:', error);
-                toast.error('Failed to delete some manuals');
-                // Revert
-                setManuals(prev => [...prev, ...manualsToDelete]);
+        try {
+            setLoading(true);
+            const response = await documentService.bulkDeleteManuals(selectedIds);
+            if (response.error) {
+                toast.error(response.error);
+                return;
             }
-        }, 5000); // 5 seconds to undo
-
-        toast(`Deleted ${idsToDelete.length} manuals`, {
-            action: {
-                label: "Undo",
-                onClick: () => {
-                    clearTimeout(timeoutId);
-                    setManuals(prev => [...prev, ...manualsToDelete]);
-                    setSelectedIds(idsToDelete);
-                }
-            },
-            duration: 4000,
-        });
+            
+            toast.success(`Deleted ${selectedIds.length} manuals permanently`);
+            const idsToRemove = [...selectedIds];
+            setManuals(prev => prev.filter(m => !idsToRemove.includes(m.id)));
+            setSelectedIds([]);
+        } catch (error) {
+            console.error('Bulk delete failed:', error);
+            toast.error('Failed to delete manuals');
+        } finally {
+            setLoading(false);
+        }
     };
 
     const toggleSelect = (id: string) => {

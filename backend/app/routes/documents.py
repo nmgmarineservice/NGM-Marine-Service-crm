@@ -13,6 +13,28 @@ from app.schemas.documents import (
 
 router = APIRouter(prefix="/documents", tags=["documents"])
 
+def delete_file_from_disk(file_url: str):
+    """Helper to delete a file from the server disk if it exists"""
+    if not file_url: return
+    try:
+        from pathlib import Path
+        import os
+        # Find the files directory consistently
+        ROOT_DIR = Path(__file__).resolve().parent.parent.parent.parent
+        FILES_DIR = ROOT_DIR / "files"
+        
+        # URL is like /files/CATEGORY/FILENAME or /files/CATEGORY/SUB/FILENAME
+        # We need the path relative to ROOT_DIR
+        # url starts with /files/
+        if file_url.startswith("/files/"):
+            rel_path = file_url[7:] # remove /files/
+            file_path = FILES_DIR / rel_path
+            if file_path.exists():
+                os.remove(file_path)
+                print(f"🗑️ Deleted file from disk: {file_path}")
+    except Exception as e:
+        print(f"⚠️ Failed to delete file from disk {file_url}: {e}")
+
 # --- MANUALS (Layer 1) ---
 
 @router.post("/manuals", response_model=ManualResponse)
@@ -65,11 +87,41 @@ async def delete_manual(
     """Delete a manual (Staff/Master only)"""
     try:
         doc_ref = db.collection('manuals').document(manual_id)
-        if not doc_ref.get().exists:
+        doc = doc_ref.get()
+        if not doc.exists:
             raise HTTPException(status_code=404, detail="Manual not found")
         
+        data = doc.to_dict()
+        file_url = data.get("file_url")
+        
+        # 1. Delete Firestore record
         doc_ref.delete()
+        
+        # 2. Delete file from disk
+        delete_file_from_disk(file_url)
+        
         return {"message": "Manual deleted successfully"}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@router.post("/manuals/bulk-delete")
+@router.post("/manuals/bulk-delete/")
+async def bulk_delete_manuals(
+    request: BulkDeleteRequest,
+    current_user: UserResponse = Depends(require_role([UserRole.STAFF, UserRole.MASTER]))
+):
+    """Delete multiple manuals (Staff/Master only)"""
+    try:
+        batch = db.batch()
+        for m_id in request.template_ids: # Reusing template_ids field name from schema
+            doc_ref = db.collection('manuals').document(m_id)
+            doc = doc_ref.get()
+            if doc.exists:
+                file_url = doc.to_dict().get("file_url")
+                batch.delete(doc_ref)
+                delete_file_from_disk(file_url)
+        batch.commit()
+        return {"message": f"Successfully deleted {len(request.template_ids)} manuals"}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -239,15 +291,22 @@ async def update_template(
         raise HTTPException(status_code=400, detail=str(e))
 
 @router.delete("/templates/{template_id}")
+@router.delete("/templates/{template_id}/")
 async def delete_template(
     template_id: str,
     current_user: UserResponse = Depends(require_role([UserRole.STAFF, UserRole.MASTER]))
 ):
-    """Delete a form template (Staff only)"""
+    """Delete a form template (Staff/Master)"""
     try:
         doc_ref = db.collection('form_templates').document(template_id)
-        if not doc_ref.get().exists:
+        doc = doc_ref.get()
+        if not doc.exists:
             raise HTTPException(status_code=404, detail="Template not found")
+        
+        # Cleanup file if exists
+        data = doc.to_dict()
+        if data.get("document_data") and data["document_data"].get("file_url"):
+            delete_file_from_disk(data["document_data"]["file_url"])
         
         doc_ref.delete()
         return {"message": "Template deleted successfully"}
@@ -255,16 +314,22 @@ async def delete_template(
         raise HTTPException(status_code=400, detail=str(e))
 
 @router.post("/templates/bulk-delete")
+@router.post("/templates/bulk-delete/")
 async def bulk_delete_templates(
     request: BulkDeleteRequest,
     current_user: UserResponse = Depends(require_role([UserRole.STAFF, UserRole.MASTER]))
 ):
-    """Delete multiple form templates (Staff only)"""
+    """Delete multiple form templates (Staff/Master)"""
     try:
         batch = db.batch()
         for t_id in request.template_ids:
             doc_ref = db.collection('form_templates').document(t_id)
-            batch.delete(doc_ref)
+            doc = doc_ref.get()
+            if doc.exists:
+                data = doc.to_dict()
+                if data.get("document_data") and data["document_data"].get("file_url"):
+                    delete_file_from_disk(data["document_data"]["file_url"])
+                batch.delete(doc_ref)
         batch.commit()
         return {"message": f"Successfully deleted {len(request.template_ids)} templates"}
     except Exception as e:
@@ -530,3 +595,36 @@ async def delete_submission(
         raise
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+@router.get("/debug/files")
+@router.get("/debug/files/")
+async def debug_list_files(
+    current_user: UserResponse = Depends(require_role([UserRole.STAFF, UserRole.MASTER]))
+):
+    """Debug endpoint to list all files on the server"""
+    import os
+    from pathlib import Path
+    
+    # Try to find the files directory consistently with main.py
+    ROOT_DIR = Path(__file__).resolve().parent.parent.parent
+    FILES_DIR = ROOT_DIR / "files"
+    
+    file_list = []
+    if FILES_DIR.exists():
+        for root, dirs, files in os.walk(FILES_DIR):
+            for file in files:
+                abs_path = os.path.join(root, file)
+                rel_path = os.path.relpath(abs_path, FILES_DIR)
+                file_list.append({
+                    "path": rel_path.replace("\\", "/"),
+                    "name": file,
+                    "size": os.path.getsize(abs_path)
+                })
+    
+    return {
+        "root_dir": str(ROOT_DIR),
+        "files_dir": str(FILES_DIR),
+        "exists": FILES_DIR.exists(),
+        "count": len(file_list),
+        "files": file_list
+    }

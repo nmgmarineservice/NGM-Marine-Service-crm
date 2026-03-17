@@ -85,6 +85,13 @@ export const documentService = {
         });
     },
 
+    bulkDeleteManuals: async (ids: string[]) => {
+        return apiRequest<any>('/documents/manuals/bulk-delete/', {
+            method: 'POST',
+            body: JSON.stringify({ template_ids: ids })
+        });
+    },
+
     // --- Templates ---
     getTemplates: async (category?: FormCategory) => {
         const queryParams = new URLSearchParams();
