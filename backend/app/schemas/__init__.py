@@ -717,6 +717,24 @@ class ClientCreate(BaseModel):
     contract_end: Optional[datetime] = None
     notes: Optional[str] = None
 
+    @field_validator('contract_start', 'contract_end', mode='before')
+    @classmethod
+    def parse_contract_dates(cls, v):
+        """Accept date strings like '2026-05-01' and convert to datetime"""
+        if v is None or v == '':
+            return None
+        if isinstance(v, datetime):
+            return v
+        if isinstance(v, str):
+            # Handle date-only string "YYYY-MM-DD"
+            if len(v) == 10 and '-' in v:
+                return datetime.strptime(v, '%Y-%m-%d')
+            # Handle ISO format with T separator
+            if 'T' in v:
+                return datetime.fromisoformat(v.replace('Z', '+00:00'))
+            return datetime.fromisoformat(v)
+        return v
+
 class ClientUpdate(BaseModel):
     name: Optional[str] = None
     company: Optional[str] = None
@@ -729,6 +747,24 @@ class ClientUpdate(BaseModel):
     contract_end: Optional[datetime] = None
     status: Optional[ClientStatus] = None
     notes: Optional[str] = None
+
+    @field_validator('contract_start', 'contract_end', mode='before')
+    @classmethod
+    def parse_contract_dates(cls, v):
+        """Accept date strings like '2026-05-01' and convert to datetime"""
+        if v is None or v == '':
+            return None
+        if isinstance(v, datetime):
+            return v
+        if isinstance(v, str):
+            # Handle date-only string "YYYY-MM-DD"
+            if len(v) == 10 and '-' in v:
+                return datetime.strptime(v, '%Y-%m-%d')
+            # Handle ISO format with T separator
+            if 'T' in v:
+                return datetime.fromisoformat(v.replace('Z', '+00:00'))
+            return datetime.fromisoformat(v)
+        return v
 
 class ClientResponse(BaseModel):
     id: str

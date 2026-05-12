@@ -51,7 +51,14 @@ const apiRequest = async <T>(
 
     return {
       data: response.ok ? data : undefined,
-      error: response.ok ? undefined : data.detail || 'An error occurred',
+      error: response.ok ? undefined : (() => {
+        const detail = data.detail;
+        if (typeof detail === 'string') return detail;
+        if (Array.isArray(detail)) {
+          return detail.map((d: any) => d.msg || JSON.stringify(d)).join('; ');
+        }
+        return data.message || 'An error occurred';
+      })(),
       status: response.status,
     };
   } catch (error) {
@@ -1062,29 +1069,29 @@ export const clientsApi = {
     if (params?.status) query.append('status', params.status);
     if (params?.country) query.append('country', params.country);
 
-    return apiRequest<ClientResponse[]>(`/clients?${query.toString()}`);
+    return apiRequest<ClientResponse[]>(`/clients/?${query.toString()}`);
   },
 
   getById: (clientId: string) =>
-    apiRequest<ClientResponse>(`/clients/${clientId}`),
+    apiRequest<ClientResponse>(`/clients/${clientId}/`),
 
   getStats: () =>
-    apiRequest<ClientStats>('/clients/stats'),
+    apiRequest<ClientStats>('/clients/stats/'),
 
   create: (data: ClientCreate) =>
-    apiRequest<ClientResponse>('/clients', {
+    apiRequest<ClientResponse>('/clients/', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
 
   update: (clientId: string, data: ClientUpdate) =>
-    apiRequest<ClientResponse>(`/clients/${clientId}`, {
+    apiRequest<ClientResponse>(`/clients/${clientId}/`, {
       method: 'PUT',
       body: JSON.stringify(data),
     }),
 
   delete: (clientId: string) =>
-    apiRequest<{ message: string }>(`/clients/${clientId}`, {
+    apiRequest<{ message: string }>(`/clients/${clientId}/`, {
       method: 'DELETE',
     }),
 };

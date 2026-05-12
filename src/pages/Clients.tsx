@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
 import { Badge } from '../components/ui/badge';
 import { Card, CardContent } from '../components/ui/card';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '../components/ui/dialog';
 import { useAuth } from '../contexts/AuthContext';
 import { toast } from 'sonner';
 import { clientsApi, ClientResponse, ClientCreate, ClientUpdate, ClientStats } from '../services/api';
@@ -401,6 +401,7 @@ export function Clients() {
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>Add New Client</DialogTitle>
+            <DialogDescription>Fill in the details below to create a new client record.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 max-h-[60vh] overflow-y-auto">
             <div className="grid grid-cols-2 gap-4">
@@ -528,6 +529,7 @@ export function Clients() {
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>Client Details</DialogTitle>
+            <DialogDescription>View full details of the selected client.</DialogDescription>
           </DialogHeader>
           {selectedClient && (
             <div className="space-y-4">
@@ -606,6 +608,7 @@ export function Clients() {
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>Edit Client</DialogTitle>
+            <DialogDescription>Update the client information below.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 max-h-[60vh] overflow-y-auto">
             <div className="grid grid-cols-2 gap-4">

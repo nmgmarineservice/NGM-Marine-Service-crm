@@ -26,7 +26,7 @@ async def get_clients(
     """Get all clients with optional filtering"""
     return await client_service.get_all_clients(status=status, country=country)
 
-@router.get("/stats")
+@router.get("/stats/")
 async def get_client_stats(
     current_user: UserResponse = Depends(get_current_user)
 ):
