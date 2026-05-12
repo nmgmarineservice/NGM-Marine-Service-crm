@@ -76,6 +76,14 @@ class ShipCreate(BaseModel):
     mlc_expiry_date: Optional[datetime] = None
     financial_security_doc_number: Optional[str] = None
     financial_security_validity: Optional[datetime] = None
+    # Document URLs
+    sea_agreement_url: Optional[str] = None
+    cba_agreement_url: Optional[str] = None
+    pi_policy_url: Optional[str] = None
+    mlc_certificate_url: Optional[str] = None
+    financial_security_url: Optional[str] = None
+    dmlc_part1_url: Optional[str] = None
+    dmlc_part2_url: Optional[str] = None
 
     @field_validator('pi_policy_validity', 'mlc_issue_date', 'mlc_expiry_date', 'financial_security_validity', mode='before')
     @classmethod
@@ -116,6 +124,14 @@ class ShipUpdate(BaseModel):
     mlc_expiry_date: Optional[datetime] = None
     financial_security_doc_number: Optional[str] = None
     financial_security_validity: Optional[datetime] = None
+    # Document URLs
+    sea_agreement_url: Optional[str] = None
+    cba_agreement_url: Optional[str] = None
+    pi_policy_url: Optional[str] = None
+    mlc_certificate_url: Optional[str] = None
+    financial_security_url: Optional[str] = None
+    dmlc_part1_url: Optional[str] = None
+    dmlc_part2_url: Optional[str] = None
 
     @field_validator('pi_policy_validity', 'mlc_issue_date', 'mlc_expiry_date', 'financial_security_validity', mode='before')
     @classmethod
@@ -158,6 +174,14 @@ class ShipResponse(BaseModel):
     mlc_expiry_date: Optional[datetime] = None
     financial_security_doc_number: Optional[str] = None
     financial_security_validity: Optional[datetime] = None
+    # Document URLs
+    sea_agreement_url: Optional[str] = None
+    cba_agreement_url: Optional[str] = None
+    pi_policy_url: Optional[str] = None
+    mlc_certificate_url: Optional[str] = None
+    financial_security_url: Optional[str] = None
+    dmlc_part1_url: Optional[str] = None
+    dmlc_part2_url: Optional[str] = None
     created_at: datetime
     updated_at: datetime
 

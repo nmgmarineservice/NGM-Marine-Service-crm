@@ -293,6 +293,14 @@ export interface ShipResponse {
   mlc_expiry_date?: string;
   financial_security_doc_number?: string;
   financial_security_validity?: string;
+  // Document URLs
+  sea_agreement_url?: string;
+  cba_agreement_url?: string;
+  pi_policy_url?: string;
+  mlc_certificate_url?: string;
+  financial_security_url?: string;
+  dmlc_part1_url?: string;
+  dmlc_part2_url?: string;
   created_at: string;
   updated_at: string;
 }
@@ -321,6 +329,14 @@ export interface ShipCreate {
   mlc_expiry_date?: string;
   financial_security_doc_number?: string;
   financial_security_validity?: string;
+  // Document URLs
+  sea_agreement_url?: string;
+  cba_agreement_url?: string;
+  pi_policy_url?: string;
+  mlc_certificate_url?: string;
+  financial_security_url?: string;
+  dmlc_part1_url?: string;
+  dmlc_part2_url?: string;
 }
 
 export interface ShipUpdate {
@@ -347,6 +363,14 @@ export interface ShipUpdate {
   mlc_expiry_date?: string;
   financial_security_doc_number?: string;
   financial_security_validity?: string;
+  // Document URLs
+  sea_agreement_url?: string;
+  cba_agreement_url?: string;
+  pi_policy_url?: string;
+  mlc_certificate_url?: string;
+  financial_security_url?: string;
+  dmlc_part1_url?: string;
+  dmlc_part2_url?: string;
 }
 
 export interface PMSTaskResponse {

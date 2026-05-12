@@ -107,6 +107,14 @@ class Ship(BaseModel):
         self.mlc_expiry_date: Optional[datetime] = kwargs.get('mlc_expiry_date')
         self.financial_security_doc_number: Optional[str] = kwargs.get('financial_security_doc_number')
         self.financial_security_validity: Optional[datetime] = kwargs.get('financial_security_validity')
+        # Document URLs
+        self.sea_agreement_url: Optional[str] = kwargs.get('sea_agreement_url')
+        self.cba_agreement_url: Optional[str] = kwargs.get('cba_agreement_url')
+        self.pi_policy_url: Optional[str] = kwargs.get('pi_policy_url')
+        self.mlc_certificate_url: Optional[str] = kwargs.get('mlc_certificate_url')
+        self.financial_security_url: Optional[str] = kwargs.get('financial_security_url')
+        self.dmlc_part1_url: Optional[str] = kwargs.get('dmlc_part1_url')
+        self.dmlc_part2_url: Optional[str] = kwargs.get('dmlc_part2_url')
 
 
 class PMSTask(BaseModel):

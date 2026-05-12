@@ -12,7 +12,8 @@ import { Label } from '../components/ui/label';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../components/ui/dropdown-menu';
 import { useAuth } from '../contexts/AuthContext';
 import { shipsApi, ShipResponse, ShipCreate, ShipUpdate } from '../services/api';
-import { toast } from 'sonner';
+import { auth, API_BASE_URL } from '../firebase';
+import { Upload, FileCheck, ExternalLink, Paperclip } from 'lucide-react';
 
 export function Vessels() {
   const { user } = useAuth();
@@ -53,7 +54,16 @@ export function Vessels() {
     mlc_expiry_date: '',
     financial_security_doc_number: '',
     financial_security_validity: '',
+    sea_agreement_url: '',
+    cba_agreement_url: '',
+    pi_policy_url: '',
+    mlc_certificate_url: '',
+    financial_security_url: '',
+    dmlc_part1_url: '',
+    dmlc_part2_url: '',
   });
+
+  const [uploading, setUploading] = useState<Record<string, boolean>>({});
 
   const isMaster = user?.role === 'master';
 
@@ -119,6 +129,13 @@ export function Vessels() {
       mlc_expiry_date: '',
       financial_security_doc_number: '',
       financial_security_validity: '',
+      sea_agreement_url: '',
+      cba_agreement_url: '',
+      pi_policy_url: '',
+      mlc_certificate_url: '',
+      financial_security_url: '',
+      dmlc_part1_url: '',
+      dmlc_part2_url: '',
     });
   };
 
@@ -145,6 +162,13 @@ export function Vessels() {
       mlc_expiry_date: ship.mlc_expiry_date ? ship.mlc_expiry_date.split('T')[0] : '',
       financial_security_doc_number: ship.financial_security_doc_number || '',
       financial_security_validity: ship.financial_security_validity ? ship.financial_security_validity.split('T')[0] : '',
+      sea_agreement_url: ship.sea_agreement_url || '',
+      cba_agreement_url: ship.cba_agreement_url || '',
+      pi_policy_url: ship.pi_policy_url || '',
+      mlc_certificate_url: ship.mlc_certificate_url || '',
+      financial_security_url: ship.financial_security_url || '',
+      dmlc_part1_url: ship.dmlc_part1_url || '',
+      dmlc_part2_url: ship.dmlc_part2_url || '',
     });
     setIsEditDialogOpen(true);
   };
@@ -152,6 +176,44 @@ export function Vessels() {
   const openDeleteDialog = (ship: ShipResponse) => {
     setSelectedShip(ship);
     setIsDeleteDialogOpen(true);
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, fieldName: string) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploading(prev => ({ ...prev, [fieldName]: true }));
+    try {
+      const token = await auth.currentUser?.getIdToken();
+      if (!token) throw new Error('Authentication required');
+
+      const formDataObj = new FormData();
+      formDataObj.append('file', file);
+      formDataObj.append('category', 'VESSEL_DOCUMENTS');
+      formDataObj.append('subcategory', formData.name || 'unnamed_vessel');
+
+      const response = await fetch(`${API_BASE_URL}/api/v1/uploads/?category=VESSEL_DOCUMENTS&subcategory=${formData.name || 'unnamed_vessel'}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        body: formDataObj
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Failed to upload file');
+      }
+
+      const { url } = await response.json();
+      setFormData(prev => ({ ...prev, [fieldName]: url }));
+      toast.success('Document uploaded successfully');
+    } catch (err) {
+      console.error('Upload error:', err);
+      toast.error(err instanceof Error ? err.message : 'Upload failed');
+    } finally {
+      setUploading(prev => ({ ...prev, [fieldName]: false }));
+    }
   };
 
   const handleCreateShip = async () => {
@@ -182,6 +244,13 @@ export function Vessels() {
         mlc_expiry_date: formData.mlc_expiry_date || undefined,
         financial_security_doc_number: formData.financial_security_doc_number || undefined,
         financial_security_validity: formData.financial_security_validity || undefined,
+        sea_agreement_url: formData.sea_agreement_url || undefined,
+        cba_agreement_url: formData.cba_agreement_url || undefined,
+        pi_policy_url: formData.pi_policy_url || undefined,
+        mlc_certificate_url: formData.mlc_certificate_url || undefined,
+        financial_security_url: formData.financial_security_url || undefined,
+        dmlc_part1_url: formData.dmlc_part1_url || undefined,
+        dmlc_part2_url: formData.dmlc_part2_url || undefined,
       };
 
       const response = await shipsApi.createShip(shipData);
@@ -223,6 +292,13 @@ export function Vessels() {
         mlc_expiry_date: formData.mlc_expiry_date || undefined,
         financial_security_doc_number: formData.financial_security_doc_number || undefined,
         financial_security_validity: formData.financial_security_validity || undefined,
+        sea_agreement_url: formData.sea_agreement_url || undefined,
+        cba_agreement_url: formData.cba_agreement_url || undefined,
+        pi_policy_url: formData.pi_policy_url || undefined,
+        mlc_certificate_url: formData.mlc_certificate_url || undefined,
+        financial_security_url: formData.financial_security_url || undefined,
+        dmlc_part1_url: formData.dmlc_part1_url || undefined,
+        dmlc_part2_url: formData.dmlc_part2_url || undefined,
       };
 
       const response = await shipsApi.updateShip(selectedShip.id, shipData);
@@ -586,6 +662,24 @@ export function Vessels() {
               </Select>
             </div>
 
+            <div className="space-y-2">
+              <Label>Seafarer Employment Agreement (SEA)</Label>
+              <div className="flex gap-2">
+                <Input type="file" onChange={(e) => handleFileUpload(e, 'sea_agreement_url')} className="cursor-pointer" accept=".pdf" />
+                {uploading['sea_agreement_url'] && <Loader2 className="w-4 h-4 animate-spin self-center" />}
+                {formData.sea_agreement_url && <FileCheck className="w-4 h-4 text-green-500 self-center" />}
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Collective Bargaining Agreement (CBA)</Label>
+              <div className="flex gap-2">
+                <Input type="file" onChange={(e) => handleFileUpload(e, 'cba_agreement_url')} className="cursor-pointer" accept=".pdf" />
+                {uploading['cba_agreement_url'] && <Loader2 className="w-4 h-4 animate-spin self-center" />}
+                {formData.cba_agreement_url && <FileCheck className="w-4 h-4 text-green-500 self-center" />}
+              </div>
+            </div>
+
             {/* P&I Details */}
             <div className="col-span-2 border-t border-border pt-4 mt-2">
               <h4 className="text-sm font-semibold text-muted-foreground mb-3">P & I Details</h4>
@@ -597,6 +691,15 @@ export function Vessels() {
             <div className="space-y-2">
               <Label>Policy Date of Validity</Label>
               <Input type="date" value={formData.pi_policy_validity} onChange={(e) => setFormData({...formData, pi_policy_validity: e.target.value})} />
+            </div>
+
+            <div className="space-y-2 col-span-2">
+              <Label>P & I Policy document</Label>
+              <div className="flex gap-2">
+                <Input type="file" onChange={(e) => handleFileUpload(e, 'pi_policy_url')} className="cursor-pointer" accept=".pdf" />
+                {uploading['pi_policy_url'] && <Loader2 className="w-4 h-4 animate-spin self-center" />}
+                {formData.pi_policy_url && <FileCheck className="w-4 h-4 text-green-500 self-center" />}
+              </div>
             </div>
 
             {/* MLC Details */}
@@ -622,6 +725,42 @@ export function Vessels() {
             <div className="space-y-2">
               <Label>Financial Security Validity</Label>
               <Input type="date" value={formData.financial_security_validity} onChange={(e) => setFormData({...formData, financial_security_validity: e.target.value})} />
+            </div>
+
+            <div className="space-y-2">
+              <Label>MLC Certificate</Label>
+              <div className="flex gap-2">
+                <Input type="file" onChange={(e) => handleFileUpload(e, 'mlc_certificate_url')} className="cursor-pointer" accept=".pdf" />
+                {uploading['mlc_certificate_url'] && <Loader2 className="w-4 h-4 animate-spin self-center" />}
+                {formData.mlc_certificate_url && <FileCheck className="w-4 h-4 text-green-500 self-center" />}
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Financial Security Document</Label>
+              <div className="flex gap-2">
+                <Input type="file" onChange={(e) => handleFileUpload(e, 'financial_security_url')} className="cursor-pointer" accept=".pdf" />
+                {uploading['financial_security_url'] && <Loader2 className="w-4 h-4 animate-spin self-center" />}
+                {formData.financial_security_url && <FileCheck className="w-4 h-4 text-green-500 self-center" />}
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>DMLC Part 1</Label>
+              <div className="flex gap-2">
+                <Input type="file" onChange={(e) => handleFileUpload(e, 'dmlc_part1_url')} className="cursor-pointer" accept=".pdf" />
+                {uploading['dmlc_part1_url'] && <Loader2 className="w-4 h-4 animate-spin self-center" />}
+                {formData.dmlc_part1_url && <FileCheck className="w-4 h-4 text-green-500 self-center" />}
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>DMLC Part 2</Label>
+              <div className="flex gap-2">
+                <Input type="file" onChange={(e) => handleFileUpload(e, 'dmlc_part2_url')} className="cursor-pointer" accept=".pdf" />
+                {uploading['dmlc_part2_url'] && <Loader2 className="w-4 h-4 animate-spin self-center" />}
+                {formData.dmlc_part2_url && <FileCheck className="w-4 h-4 text-green-500 self-center" />}
+              </div>
             </div>
           </div>
           <DialogFooter>
@@ -733,6 +872,38 @@ export function Vessels() {
               </Select>
             </div>
 
+            <div className="space-y-2">
+              <Label>Seafarer Employment Agreement (SEA)</Label>
+              <div className="flex gap-2">
+                <Input type="file" onChange={(e) => handleFileUpload(e, 'sea_agreement_url')} className="cursor-pointer" accept=".pdf" />
+                {uploading['sea_agreement_url'] && <Loader2 className="w-4 h-4 animate-spin self-center" />}
+                {formData.sea_agreement_url && (
+                  <div className="flex gap-1 self-center">
+                    <FileCheck className="w-4 h-4 text-green-500" />
+                    <a href={formData.sea_agreement_url.startsWith('http') ? formData.sea_agreement_url : `${API_BASE_URL}${formData.sea_agreement_url}`} target="_blank" rel="noopener noreferrer">
+                      <ExternalLink className="w-4 h-4 text-blue-500 hover:text-blue-700" />
+                    </a>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Collective Bargaining Agreement (CBA)</Label>
+              <div className="flex gap-2">
+                <Input type="file" onChange={(e) => handleFileUpload(e, 'cba_agreement_url')} className="cursor-pointer" accept=".pdf" />
+                {uploading['cba_agreement_url'] && <Loader2 className="w-4 h-4 animate-spin self-center" />}
+                {formData.cba_agreement_url && (
+                  <div className="flex gap-1 self-center">
+                    <FileCheck className="w-4 h-4 text-green-500" />
+                    <a href={formData.cba_agreement_url.startsWith('http') ? formData.cba_agreement_url : `${API_BASE_URL}${formData.cba_agreement_url}`} target="_blank" rel="noopener noreferrer">
+                      <ExternalLink className="w-4 h-4 text-blue-500 hover:text-blue-700" />
+                    </a>
+                  </div>
+                )}
+              </div>
+            </div>
+
             {/* P&I Details */}
             <div className="col-span-2 border-t border-border pt-4 mt-2">
               <h4 className="text-sm font-semibold text-muted-foreground mb-3">P & I Details</h4>
@@ -744,6 +915,22 @@ export function Vessels() {
             <div className="space-y-2">
               <Label>Policy Date of Validity</Label>
               <Input type="date" value={formData.pi_policy_validity} onChange={(e) => setFormData({...formData, pi_policy_validity: e.target.value})} />
+            </div>
+
+            <div className="space-y-2 col-span-2">
+              <Label>P & I Policy document</Label>
+              <div className="flex gap-2">
+                <Input type="file" onChange={(e) => handleFileUpload(e, 'pi_policy_url')} className="cursor-pointer" accept=".pdf" />
+                {uploading['pi_policy_url'] && <Loader2 className="w-4 h-4 animate-spin self-center" />}
+                {formData.pi_policy_url && (
+                  <div className="flex gap-1 self-center">
+                    <FileCheck className="w-4 h-4 text-green-500" />
+                    <a href={formData.pi_policy_url.startsWith('http') ? formData.pi_policy_url : `${API_BASE_URL}${formData.pi_policy_url}`} target="_blank" rel="noopener noreferrer">
+                      <ExternalLink className="w-4 h-4 text-blue-500 hover:text-blue-700" />
+                    </a>
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* MLC Details */}
@@ -769,6 +956,70 @@ export function Vessels() {
             <div className="space-y-2">
               <Label>Financial Security Validity</Label>
               <Input type="date" value={formData.financial_security_validity} onChange={(e) => setFormData({...formData, financial_security_validity: e.target.value})} />
+            </div>
+
+            <div className="space-y-2">
+              <Label>MLC Certificate</Label>
+              <div className="flex gap-2">
+                <Input type="file" onChange={(e) => handleFileUpload(e, 'mlc_certificate_url')} className="cursor-pointer" accept=".pdf" />
+                {uploading['mlc_certificate_url'] && <Loader2 className="w-4 h-4 animate-spin self-center" />}
+                {formData.mlc_certificate_url && (
+                  <div className="flex gap-1 self-center">
+                    <FileCheck className="w-4 h-4 text-green-500" />
+                    <a href={formData.mlc_certificate_url.startsWith('http') ? formData.mlc_certificate_url : `${API_BASE_URL}${formData.mlc_certificate_url}`} target="_blank" rel="noopener noreferrer">
+                      <ExternalLink className="w-4 h-4 text-blue-500 hover:text-blue-700" />
+                    </a>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Financial Security Document</Label>
+              <div className="flex gap-2">
+                <Input type="file" onChange={(e) => handleFileUpload(e, 'financial_security_url')} className="cursor-pointer" accept=".pdf" />
+                {uploading['financial_security_url'] && <Loader2 className="w-4 h-4 animate-spin self-center" />}
+                {formData.financial_security_url && (
+                  <div className="flex gap-1 self-center">
+                    <FileCheck className="w-4 h-4 text-green-500" />
+                    <a href={formData.financial_security_url.startsWith('http') ? formData.financial_security_url : `${API_BASE_URL}${formData.financial_security_url}`} target="_blank" rel="noopener noreferrer">
+                      <ExternalLink className="w-4 h-4 text-blue-500 hover:text-blue-700" />
+                    </a>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>DMLC Part 1</Label>
+              <div className="flex gap-2">
+                <Input type="file" onChange={(e) => handleFileUpload(e, 'dmlc_part1_url')} className="cursor-pointer" accept=".pdf" />
+                {uploading['dmlc_part1_url'] && <Loader2 className="w-4 h-4 animate-spin self-center" />}
+                {formData.dmlc_part1_url && (
+                  <div className="flex gap-1 self-center">
+                    <FileCheck className="w-4 h-4 text-green-500" />
+                    <a href={formData.dmlc_part1_url.startsWith('http') ? formData.dmlc_part1_url : `${API_BASE_URL}${formData.dmlc_part1_url}`} target="_blank" rel="noopener noreferrer">
+                      <ExternalLink className="w-4 h-4 text-blue-500 hover:text-blue-700" />
+                    </a>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>DMLC Part 2</Label>
+              <div className="flex gap-2">
+                <Input type="file" onChange={(e) => handleFileUpload(e, 'dmlc_part2_url')} className="cursor-pointer" accept=".pdf" />
+                {uploading['dmlc_part2_url'] && <Loader2 className="w-4 h-4 animate-spin self-center" />}
+                {formData.dmlc_part2_url && (
+                  <div className="flex gap-1 self-center">
+                    <FileCheck className="w-4 h-4 text-green-500" />
+                    <a href={formData.dmlc_part2_url.startsWith('http') ? formData.dmlc_part2_url : `${API_BASE_URL}${formData.dmlc_part2_url}`} target="_blank" rel="noopener noreferrer">
+                      <ExternalLink className="w-4 h-4 text-blue-500 hover:text-blue-700" />
+                    </a>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
           <DialogFooter>

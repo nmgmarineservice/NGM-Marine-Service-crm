@@ -23,7 +23,7 @@ async def upload_file(
     """Upload a file to the server"""
     try:
         # Validate category to prevent directory traversal
-        allowed_categories = ["LAYER_1_MANUALS", "LAYER_2_FORM_TEMPLATES", "LAYER_3_FORM_SUBMISSIONS"]
+        allowed_categories = ["LAYER_1_MANUALS", "LAYER_2_FORM_TEMPLATES", "LAYER_3_FORM_SUBMISSIONS", "VESSEL_DOCUMENTS"]
         if category not in allowed_categories:
             raise HTTPException(status_code=400, detail="Invalid category")
 

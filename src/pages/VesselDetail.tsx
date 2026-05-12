@@ -13,6 +13,8 @@ import { shipsApi, ShipResponse, ShipUpdate, userApi, UserResponse } from '../se
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '../components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
+import { auth, API_BASE_URL } from '../firebase';
+import { FileCheck, ExternalLink, Paperclip, Upload } from 'lucide-react';
 
 
 export function VesselDetail() {
@@ -30,6 +32,7 @@ export function VesselDetail() {
   const [availableCrew, setAvailableCrew] = useState<UserResponse[]>([]);
   const [selectedCrewId, setSelectedCrewId] = useState<string>('');
   const [assignRole, setAssignRole] = useState<string>('');
+  const [uploading, setUploading] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     if (id) {
@@ -68,6 +71,13 @@ export function VesselDetail() {
               mlc_expiry_date: response.data.mlc_expiry_date ? response.data.mlc_expiry_date.split('T')[0] : undefined,
               financial_security_doc_number: response.data.financial_security_doc_number,
               financial_security_validity: response.data.financial_security_validity ? response.data.financial_security_validity.split('T')[0] : undefined,
+              sea_agreement_url: response.data.sea_agreement_url,
+              cba_agreement_url: response.data.cba_agreement_url,
+              pi_policy_url: response.data.pi_policy_url,
+              mlc_certificate_url: response.data.mlc_certificate_url,
+              financial_security_url: response.data.financial_security_url,
+              dmlc_part1_url: response.data.dmlc_part1_url,
+              dmlc_part2_url: response.data.dmlc_part2_url,
           });
       }
     } catch (error) {
@@ -120,6 +130,44 @@ export function VesselDetail() {
             toast.error("Failed to remove crew member");
         }
     };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, fieldName: string) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploading(prev => ({ ...prev, [fieldName]: true }));
+    try {
+      const token = await auth.currentUser?.getIdToken();
+      if (!token) throw new Error('Authentication required');
+
+      const formDataObj = new FormData();
+      formDataObj.append('file', file);
+      formDataObj.append('category', 'VESSEL_DOCUMENTS');
+      formDataObj.append('subcategory', ship?.name || 'unnamed_vessel');
+
+      const response = await fetch(`${API_BASE_URL}/api/v1/uploads/?category=VESSEL_DOCUMENTS&subcategory=${ship?.name || 'unnamed_vessel'}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        body: formDataObj
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Failed to upload file');
+      }
+
+      const { url } = await response.json();
+      setEditFormData(prev => ({ ...prev, [fieldName]: url }));
+      toast.success('Document uploaded successfully');
+    } catch (err) {
+      console.error('Upload error:', err);
+      toast.error(err instanceof Error ? err.message : 'Upload failed');
+    } finally {
+      setUploading(prev => ({ ...prev, [fieldName]: false }));
+    }
+  };
 
   const handleAssignCrew = async () => {
       if (!ship?.id || !selectedCrewId) return;
@@ -360,6 +408,41 @@ export function VesselDetail() {
                   <Input value={ship.financial_security_validity ? new Date(ship.financial_security_validity).toLocaleDateString() : 'N/A'} readOnly />
                 </div>
               </div>
+
+              {/* Documents Section */}
+              <h3 className="text-foreground mb-4 mt-8 pt-6 border-t border-border">Compliance Documents</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {[
+                  { label: 'SEA Agreement', url: ship.sea_agreement_url },
+                  { label: 'CBA Agreement', url: ship.cba_agreement_url },
+                  { label: 'P&I Policy', url: ship.pi_policy_url },
+                  { label: 'MLC Certificate', url: ship.mlc_certificate_url },
+                  { label: 'Financial Security', url: ship.financial_security_url },
+                  { label: 'DMLC Part 1', url: ship.dmlc_part1_url },
+                  { label: 'DMLC Part 2', url: ship.dmlc_part2_url },
+                ].map((doc, idx) => (
+                  <Card key={idx} className="bg-muted/50 border-dashed">
+                    <CardContent className="p-4 flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <Paperclip className="w-4 h-4 text-muted-foreground" />
+                        <span className="text-sm font-medium">{doc.label}</span>
+                      </div>
+                      {doc.url ? (
+                        <a 
+                          href={doc.url.startsWith('http') ? doc.url : `${API_BASE_URL}${doc.url}`} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="p-2 hover:bg-primary/10 rounded-full transition-colors"
+                        >
+                          <ExternalLink className="w-4 h-4 text-primary" />
+                        </a>
+                      ) : (
+                        <span className="text-xs text-muted-foreground italic">No file</span>
+                      )}
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
@@ -494,6 +577,45 @@ export function VesselDetail() {
                     <Label htmlFor="call_sign">Call Sign</Label>
                     <Input id="call_sign" value={editFormData.call_sign || ''} onChange={(e) => setEditFormData({...editFormData, call_sign: e.target.value})} />
                 </div>
+
+                {/* Documents Section */}
+                <div className="col-span-2 border-t border-border pt-4 mt-2">
+                  <h4 className="text-sm font-semibold text-muted-foreground mb-3">Compliance Documents</h4>
+                </div>
+                {[
+                  { label: 'SEA Agreement', field: 'sea_agreement_url' },
+                  { label: 'CBA Agreement', field: 'cba_agreement_url' },
+                  { label: 'P&I Policy', field: 'pi_policy_url' },
+                  { label: 'MLC Certificate', field: 'mlc_certificate_url' },
+                  { label: 'Financial Security', field: 'financial_security_url' },
+                  { label: 'DMLC Part 1', field: 'dmlc_part1_url' },
+                  { label: 'DMLC Part 2', field: 'dmlc_part2_url' },
+                ].map((doc) => (
+                  <div key={doc.field} className="grid gap-2">
+                    <Label>{doc.label}</Label>
+                    <div className="flex gap-2">
+                      <Input 
+                        type="file" 
+                        onChange={(e) => handleFileUpload(e, doc.field)} 
+                        className="cursor-pointer" 
+                        accept=".pdf" 
+                      />
+                      {uploading[doc.field] && <Loader2 className="w-4 h-4 animate-spin self-center" />}
+                      {(editFormData as any)[doc.field] && (
+                        <div className="flex gap-1 self-center">
+                          <FileCheck className="w-4 h-4 text-green-500" />
+                          <a 
+                            href={(editFormData as any)[doc.field].startsWith('http') ? (editFormData as any)[doc.field] : `${API_BASE_URL}${(editFormData as any)[doc.field]}`} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                          >
+                            <ExternalLink className="w-4 h-4 text-blue-500 hover:text-blue-700" />
+                          </a>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
 
                 {/* DG Shipping / e-Samudra Fields */}
                 <div className="col-span-2 border-t border-border pt-4 mt-2">
