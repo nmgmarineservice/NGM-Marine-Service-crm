@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '../components/ui/dialog';
 import { Label } from '../components/ui/label';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../components/ui/dropdown-menu';
 import { useAuth } from '../contexts/AuthContext';
@@ -43,6 +43,16 @@ export function Vessels() {
     owner: '',
     operator: '',
     status: 'active' as const,
+    official_number: '',
+    kilo_watt: '',
+    sea_refers_cba: false,
+    pi_policy_number: '',
+    pi_policy_validity: '',
+    mlc_certificate_no: '',
+    mlc_issue_date: '',
+    mlc_expiry_date: '',
+    financial_security_doc_number: '',
+    financial_security_validity: '',
   });
 
   const isMaster = user?.role === 'master';
@@ -99,6 +109,16 @@ export function Vessels() {
       owner: '',
       operator: '',
       status: 'active',
+      official_number: '',
+      kilo_watt: '',
+      sea_refers_cba: false,
+      pi_policy_number: '',
+      pi_policy_validity: '',
+      mlc_certificate_no: '',
+      mlc_issue_date: '',
+      mlc_expiry_date: '',
+      financial_security_doc_number: '',
+      financial_security_validity: '',
     });
   };
 
@@ -115,6 +135,16 @@ export function Vessels() {
       owner: ship.owner || '',
       operator: ship.operator || '',
       status: ship.status as any,
+      official_number: ship.official_number || '',
+      kilo_watt: ship.kilo_watt?.toString() || '',
+      sea_refers_cba: ship.sea_refers_cba || false,
+      pi_policy_number: ship.pi_policy_number || '',
+      pi_policy_validity: ship.pi_policy_validity ? ship.pi_policy_validity.split('T')[0] : '',
+      mlc_certificate_no: ship.mlc_certificate_no || '',
+      mlc_issue_date: ship.mlc_issue_date ? ship.mlc_issue_date.split('T')[0] : '',
+      mlc_expiry_date: ship.mlc_expiry_date ? ship.mlc_expiry_date.split('T')[0] : '',
+      financial_security_doc_number: ship.financial_security_doc_number || '',
+      financial_security_validity: ship.financial_security_validity ? ship.financial_security_validity.split('T')[0] : '',
     });
     setIsEditDialogOpen(true);
   };
@@ -142,6 +172,16 @@ export function Vessels() {
         owner: formData.owner || undefined,
         operator: formData.operator || undefined,
         status: formData.status,
+        official_number: formData.official_number || undefined,
+        kilo_watt: formData.kilo_watt ? parseFloat(formData.kilo_watt) : undefined,
+        sea_refers_cba: formData.sea_refers_cba,
+        pi_policy_number: formData.pi_policy_number || undefined,
+        pi_policy_validity: formData.pi_policy_validity || undefined,
+        mlc_certificate_no: formData.mlc_certificate_no || undefined,
+        mlc_issue_date: formData.mlc_issue_date || undefined,
+        mlc_expiry_date: formData.mlc_expiry_date || undefined,
+        financial_security_doc_number: formData.financial_security_doc_number || undefined,
+        financial_security_validity: formData.financial_security_validity || undefined,
       };
 
       const response = await shipsApi.createShip(shipData);
@@ -173,6 +213,16 @@ export function Vessels() {
         owner: formData.owner || undefined,
         operator: formData.operator || undefined,
         status: formData.status || undefined,
+        official_number: formData.official_number || undefined,
+        kilo_watt: formData.kilo_watt ? parseFloat(formData.kilo_watt) : undefined,
+        sea_refers_cba: formData.sea_refers_cba,
+        pi_policy_number: formData.pi_policy_number || undefined,
+        pi_policy_validity: formData.pi_policy_validity || undefined,
+        mlc_certificate_no: formData.mlc_certificate_no || undefined,
+        mlc_issue_date: formData.mlc_issue_date || undefined,
+        mlc_expiry_date: formData.mlc_expiry_date || undefined,
+        financial_security_doc_number: formData.financial_security_doc_number || undefined,
+        financial_security_validity: formData.financial_security_validity || undefined,
       };
 
       const response = await shipsApi.updateShip(selectedShip.id, shipData);
@@ -436,9 +486,10 @@ export function Vessels() {
 
       {/* Create Vessel Dialog */}
       <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Add New Vessel</DialogTitle>
+            <DialogDescription>Enter the technical specifications and registration details for the new vessel.</DialogDescription>
           </DialogHeader>
           <div className="grid grid-cols-2 gap-4 py-4">
             <div className="space-y-2">
@@ -509,6 +560,69 @@ export function Vessels() {
               <Label>Operator</Label>
               <Input value={formData.operator} onChange={(e) => setFormData({...formData, operator: e.target.value})} placeholder="Pacific Marine Services" />
             </div>
+
+            {/* DG Shipping / e-Samudra Fields */}
+            <div className="col-span-2 border-t border-border pt-4 mt-2">
+              <h4 className="text-sm font-semibold text-muted-foreground mb-3">DG Shipping Details</h4>
+            </div>
+            <div className="space-y-2">
+              <Label>Official Number</Label>
+              <Input value={formData.official_number} onChange={(e) => setFormData({...formData, official_number: e.target.value})} placeholder="Official number" />
+            </div>
+            <div className="space-y-2">
+              <Label>Kilo Watt</Label>
+              <Input type="number" value={formData.kilo_watt} onChange={(e) => setFormData({...formData, kilo_watt: e.target.value})} placeholder="Engine power in KW" />
+            </div>
+            <div className="space-y-2 col-span-2">
+              <Label>SEA refers to CBA?</Label>
+              <Select value={formData.sea_refers_cba ? 'yes' : 'no'} onValueChange={(v) => setFormData({...formData, sea_refers_cba: v === 'yes'})}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="yes">Yes</SelectItem>
+                  <SelectItem value="no">No</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* P&I Details */}
+            <div className="col-span-2 border-t border-border pt-4 mt-2">
+              <h4 className="text-sm font-semibold text-muted-foreground mb-3">P & I Details</h4>
+            </div>
+            <div className="space-y-2">
+              <Label>P & I Policy Number</Label>
+              <Input value={formData.pi_policy_number} onChange={(e) => setFormData({...formData, pi_policy_number: e.target.value})} placeholder="Policy number" />
+            </div>
+            <div className="space-y-2">
+              <Label>Policy Date of Validity</Label>
+              <Input type="date" value={formData.pi_policy_validity} onChange={(e) => setFormData({...formData, pi_policy_validity: e.target.value})} />
+            </div>
+
+            {/* MLC Details */}
+            <div className="col-span-2 border-t border-border pt-4 mt-2">
+              <h4 className="text-sm font-semibold text-muted-foreground mb-3">MLC Details</h4>
+            </div>
+            <div className="space-y-2">
+              <Label>MLC Certificate No.</Label>
+              <Input value={formData.mlc_certificate_no} onChange={(e) => setFormData({...formData, mlc_certificate_no: e.target.value})} placeholder="Certificate number" />
+            </div>
+            <div className="space-y-2">
+              <Label>Date of Issue</Label>
+              <Input type="date" value={formData.mlc_issue_date} onChange={(e) => setFormData({...formData, mlc_issue_date: e.target.value})} />
+            </div>
+            <div className="space-y-2">
+              <Label>Date of Expiry</Label>
+              <Input type="date" value={formData.mlc_expiry_date} onChange={(e) => setFormData({...formData, mlc_expiry_date: e.target.value})} />
+            </div>
+            <div className="space-y-2">
+              <Label>Financial Security Doc No.</Label>
+              <Input value={formData.financial_security_doc_number} onChange={(e) => setFormData({...formData, financial_security_doc_number: e.target.value})} placeholder="Document number" />
+            </div>
+            <div className="space-y-2">
+              <Label>Financial Security Validity</Label>
+              <Input type="date" value={formData.financial_security_validity} onChange={(e) => setFormData({...formData, financial_security_validity: e.target.value})} />
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>Cancel</Button>
@@ -519,9 +633,10 @@ export function Vessels() {
 
       {/* Edit Vessel Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit Vessel</DialogTitle>
+            <DialogDescription>Update the registration, technical, and compliance details for this vessel.</DialogDescription>
           </DialogHeader>
           <div className="grid grid-cols-2 gap-4 py-4">
             <div className="space-y-2">
@@ -592,6 +707,69 @@ export function Vessels() {
               <Label>Operator</Label>
               <Input value={formData.operator} onChange={(e) => setFormData({...formData, operator: e.target.value})} />
             </div>
+
+            {/* DG Shipping / e-Samudra Fields */}
+            <div className="col-span-2 border-t border-border pt-4 mt-2">
+              <h4 className="text-sm font-semibold text-muted-foreground mb-3">DG Shipping Details</h4>
+            </div>
+            <div className="space-y-2">
+              <Label>Official Number</Label>
+              <Input value={formData.official_number} onChange={(e) => setFormData({...formData, official_number: e.target.value})} />
+            </div>
+            <div className="space-y-2">
+              <Label>Kilo Watt</Label>
+              <Input type="number" value={formData.kilo_watt} onChange={(e) => setFormData({...formData, kilo_watt: e.target.value})} />
+            </div>
+            <div className="space-y-2 col-span-2">
+              <Label>SEA refers to CBA?</Label>
+              <Select value={formData.sea_refers_cba ? 'yes' : 'no'} onValueChange={(v) => setFormData({...formData, sea_refers_cba: v === 'yes'})}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="yes">Yes</SelectItem>
+                  <SelectItem value="no">No</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* P&I Details */}
+            <div className="col-span-2 border-t border-border pt-4 mt-2">
+              <h4 className="text-sm font-semibold text-muted-foreground mb-3">P & I Details</h4>
+            </div>
+            <div className="space-y-2">
+              <Label>P & I Policy Number</Label>
+              <Input value={formData.pi_policy_number} onChange={(e) => setFormData({...formData, pi_policy_number: e.target.value})} />
+            </div>
+            <div className="space-y-2">
+              <Label>Policy Date of Validity</Label>
+              <Input type="date" value={formData.pi_policy_validity} onChange={(e) => setFormData({...formData, pi_policy_validity: e.target.value})} />
+            </div>
+
+            {/* MLC Details */}
+            <div className="col-span-2 border-t border-border pt-4 mt-2">
+              <h4 className="text-sm font-semibold text-muted-foreground mb-3">MLC Details</h4>
+            </div>
+            <div className="space-y-2">
+              <Label>MLC Certificate No.</Label>
+              <Input value={formData.mlc_certificate_no} onChange={(e) => setFormData({...formData, mlc_certificate_no: e.target.value})} />
+            </div>
+            <div className="space-y-2">
+              <Label>Date of Issue</Label>
+              <Input type="date" value={formData.mlc_issue_date} onChange={(e) => setFormData({...formData, mlc_issue_date: e.target.value})} />
+            </div>
+            <div className="space-y-2">
+              <Label>Date of Expiry</Label>
+              <Input type="date" value={formData.mlc_expiry_date} onChange={(e) => setFormData({...formData, mlc_expiry_date: e.target.value})} />
+            </div>
+            <div className="space-y-2">
+              <Label>Financial Security Doc No.</Label>
+              <Input value={formData.financial_security_doc_number} onChange={(e) => setFormData({...formData, financial_security_doc_number: e.target.value})} />
+            </div>
+            <div className="space-y-2">
+              <Label>Financial Security Validity</Label>
+              <Input type="date" value={formData.financial_security_validity} onChange={(e) => setFormData({...formData, financial_security_validity: e.target.value})} />
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>Cancel</Button>
@@ -605,6 +783,7 @@ export function Vessels() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Delete Vessel</DialogTitle>
+            <DialogDescription>This action cannot be undone. This will permanently delete the vessel and all associated records.</DialogDescription>
           </DialogHeader>
           <p className="py-4">
             Are you sure you want to delete <strong>{selectedShip?.name}</strong>? This action cannot be undone.

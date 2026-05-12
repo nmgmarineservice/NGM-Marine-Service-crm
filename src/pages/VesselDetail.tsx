@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '.
 import { Breadcrumbs } from '../components/Breadcrumbs';
 import { shipsApi, ShipResponse, ShipUpdate, userApi, UserResponse } from '../services/api';
 import { toast } from 'sonner';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '../components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 
 
@@ -58,6 +58,16 @@ export function VesselDetail() {
               owner: response.data.owner,
               operator: response.data.operator,
               call_sign: response.data.call_sign,
+              official_number: response.data.official_number,
+              kilo_watt: response.data.kilo_watt,
+              sea_refers_cba: response.data.sea_refers_cba,
+              pi_policy_number: response.data.pi_policy_number,
+              pi_policy_validity: response.data.pi_policy_validity ? response.data.pi_policy_validity.split('T')[0] : undefined,
+              mlc_certificate_no: response.data.mlc_certificate_no,
+              mlc_issue_date: response.data.mlc_issue_date ? response.data.mlc_issue_date.split('T')[0] : undefined,
+              mlc_expiry_date: response.data.mlc_expiry_date ? response.data.mlc_expiry_date.split('T')[0] : undefined,
+              financial_security_doc_number: response.data.financial_security_doc_number,
+              financial_security_validity: response.data.financial_security_validity ? response.data.financial_security_validity.split('T')[0] : undefined,
           });
       }
     } catch (error) {
@@ -295,6 +305,61 @@ export function VesselDetail() {
                   <Input value={ship.status.toUpperCase()} readOnly />
                 </div>
               </div>
+
+              {/* DG Shipping Details */}
+              <h3 className="text-foreground mb-4 mt-8 pt-6 border-t border-border">DG Shipping Details</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <Label>Official Number</Label>
+                  <Input value={ship.official_number || 'N/A'} readOnly />
+                </div>
+                <div className="space-y-2">
+                  <Label>Kilo Watt</Label>
+                  <Input value={ship.kilo_watt?.toString() || 'N/A'} readOnly />
+                </div>
+                <div className="space-y-2">
+                  <Label>SEA refers to CBA?</Label>
+                  <Input value={ship.sea_refers_cba ? 'Yes' : 'No'} readOnly />
+                </div>
+              </div>
+
+              {/* P&I Details */}
+              <h3 className="text-foreground mb-4 mt-8 pt-6 border-t border-border">P & I Details</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <Label>P & I Policy Number</Label>
+                  <Input value={ship.pi_policy_number || 'N/A'} readOnly />
+                </div>
+                <div className="space-y-2">
+                  <Label>Policy Date of Validity</Label>
+                  <Input value={ship.pi_policy_validity ? new Date(ship.pi_policy_validity).toLocaleDateString() : 'N/A'} readOnly />
+                </div>
+              </div>
+
+              {/* MLC Details */}
+              <h3 className="text-foreground mb-4 mt-8 pt-6 border-t border-border">MLC Details</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <Label>MLC Certificate No.</Label>
+                  <Input value={ship.mlc_certificate_no || 'N/A'} readOnly />
+                </div>
+                <div className="space-y-2">
+                  <Label>Date of Issue</Label>
+                  <Input value={ship.mlc_issue_date ? new Date(ship.mlc_issue_date).toLocaleDateString() : 'N/A'} readOnly />
+                </div>
+                <div className="space-y-2">
+                  <Label>Date of Expiry</Label>
+                  <Input value={ship.mlc_expiry_date ? new Date(ship.mlc_expiry_date).toLocaleDateString() : 'N/A'} readOnly />
+                </div>
+                <div className="space-y-2">
+                  <Label>Financial Security Doc No.</Label>
+                  <Input value={ship.financial_security_doc_number || 'N/A'} readOnly />
+                </div>
+                <div className="space-y-2">
+                  <Label>Financial Security Validity</Label>
+                  <Input value={ship.financial_security_validity ? new Date(ship.financial_security_validity).toLocaleDateString() : 'N/A'} readOnly />
+                </div>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
@@ -363,11 +428,12 @@ export function VesselDetail() {
 
       {/* Edit Dialog */}
       <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
-        <DialogContent className="max-w-2xl">
-            <DialogHeader>
-                <DialogTitle>Edit Vessel Details</DialogTitle>
-            </DialogHeader>
-            <div className="grid grid-cols-2 gap-4 py-4">
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+              <DialogTitle>Edit Vessel Details</DialogTitle>
+              <DialogDescription>Update the vessel information and technical specifications.</DialogDescription>
+          </DialogHeader>
+          <div className="grid grid-cols-2 gap-4 py-4 max-h-[70vh] overflow-y-auto pr-2">
                 <div className="grid gap-2">
                     <Label htmlFor="name">Name</Label>
                     <Input id="name" value={editFormData.name || ''} onChange={(e) => setEditFormData({...editFormData, name: e.target.value})} />
@@ -428,6 +494,69 @@ export function VesselDetail() {
                     <Label htmlFor="call_sign">Call Sign</Label>
                     <Input id="call_sign" value={editFormData.call_sign || ''} onChange={(e) => setEditFormData({...editFormData, call_sign: e.target.value})} />
                 </div>
+
+                {/* DG Shipping / e-Samudra Fields */}
+                <div className="col-span-2 border-t border-border pt-4 mt-2">
+                  <h4 className="text-sm font-semibold text-muted-foreground mb-3">DG Shipping Details</h4>
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="official_number">Official Number</Label>
+                  <Input id="official_number" value={editFormData.official_number || ''} onChange={(e) => setEditFormData({...editFormData, official_number: e.target.value})} placeholder="Official number" />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="kilo_watt">Kilo Watt</Label>
+                  <Input id="kilo_watt" type="number" value={editFormData.kilo_watt || ''} onChange={(e) => setEditFormData({...editFormData, kilo_watt: Number(e.target.value)})} placeholder="Engine power in KW" />
+                </div>
+                <div className="grid gap-2 col-span-2">
+                  <Label htmlFor="sea_refers_cba">SEA refers to CBA?</Label>
+                  <Select value={editFormData.sea_refers_cba ? 'yes' : 'no'} onValueChange={(v) => setEditFormData({...editFormData, sea_refers_cba: v === 'yes'})}>
+                    <SelectTrigger id="sea_refers_cba">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="yes">Yes</SelectItem>
+                      <SelectItem value="no">No</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* P&I Details */}
+                <div className="col-span-2 border-t border-border pt-4 mt-2">
+                  <h4 className="text-sm font-semibold text-muted-foreground mb-3">P & I Details</h4>
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="pi_policy_number">P & I Policy Number</Label>
+                  <Input id="pi_policy_number" value={editFormData.pi_policy_number || ''} onChange={(e) => setEditFormData({...editFormData, pi_policy_number: e.target.value})} placeholder="Policy number" />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="pi_policy_validity">Policy Date of Validity</Label>
+                  <Input id="pi_policy_validity" type="date" value={editFormData.pi_policy_validity || ''} onChange={(e) => setEditFormData({...editFormData, pi_policy_validity: e.target.value})} />
+                </div>
+
+                {/* MLC Details */}
+                <div className="col-span-2 border-t border-border pt-4 mt-2">
+                  <h4 className="text-sm font-semibold text-muted-foreground mb-3">MLC Details</h4>
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="mlc_certificate_no">MLC Certificate No.</Label>
+                  <Input id="mlc_certificate_no" value={editFormData.mlc_certificate_no || ''} onChange={(e) => setEditFormData({...editFormData, mlc_certificate_no: e.target.value})} placeholder="Certificate number" />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="mlc_issue_date">Date of Issue</Label>
+                  <Input id="mlc_issue_date" type="date" value={editFormData.mlc_issue_date || ''} onChange={(e) => setEditFormData({...editFormData, mlc_issue_date: e.target.value})} />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="mlc_expiry_date">Date of Expiry</Label>
+                  <Input id="mlc_expiry_date" type="date" value={editFormData.mlc_expiry_date || ''} onChange={(e) => setEditFormData({...editFormData, mlc_expiry_date: e.target.value})} />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="financial_security_doc_number">Financial Security Doc No.</Label>
+                  <Input id="financial_security_doc_number" value={editFormData.financial_security_doc_number || ''} onChange={(e) => setEditFormData({...editFormData, financial_security_doc_number: e.target.value})} placeholder="Document number" />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="financial_security_validity">Financial Security Validity</Label>
+                  <Input id="financial_security_validity" type="date" value={editFormData.financial_security_validity || ''} onChange={(e) => setEditFormData({...editFormData, financial_security_validity: e.target.value})} />
+                </div>
             </div>
             <DialogFooter>
                 <Button variant="outline" onClick={() => setIsEditOpen(false)}>Cancel</Button>
@@ -438,9 +567,10 @@ export function VesselDetail() {
 
       {/* Assign Crew Dialog */}
       <Dialog open={isAssignCrewOpen} onOpenChange={setIsAssignCrewOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-xl">
             <DialogHeader>
                 <DialogTitle>Assign Crew to {ship.name}</DialogTitle>
+                <DialogDescription>Select a crew member to assign to this vessel and specify their role.</DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
                 <div className="grid gap-2">

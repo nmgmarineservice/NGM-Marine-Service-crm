@@ -63,6 +63,34 @@ class ShipCreate(BaseModel):
     status: ShipStatus = "active"
     owner: Optional[str] = None
     operator: Optional[str] = None
+    # DG Shipping / e-Samudra fields
+    official_number: Optional[str] = None
+    kilo_watt: Optional[float] = None
+    sea_refers_cba: bool = False
+    # P&I Details
+    pi_policy_number: Optional[str] = None
+    pi_policy_validity: Optional[datetime] = None
+    # MLC Details
+    mlc_certificate_no: Optional[str] = None
+    mlc_issue_date: Optional[datetime] = None
+    mlc_expiry_date: Optional[datetime] = None
+    financial_security_doc_number: Optional[str] = None
+    financial_security_validity: Optional[datetime] = None
+
+    @field_validator('pi_policy_validity', 'mlc_issue_date', 'mlc_expiry_date', 'financial_security_validity', mode='before')
+    @classmethod
+    def parse_ship_dates(cls, v):
+        if v is None or v == '':
+            return None
+        if isinstance(v, datetime):
+            return v
+        if isinstance(v, str):
+            if len(v) == 10 and '-' in v:
+                return datetime.strptime(v, '%Y-%m-%d')
+            if 'T' in v:
+                return datetime.fromisoformat(v.replace('Z', '+00:00'))
+            return datetime.fromisoformat(v)
+        return v
 
 class ShipUpdate(BaseModel):
     name: Optional[str] = None
@@ -75,6 +103,34 @@ class ShipUpdate(BaseModel):
     built_year: Optional[int] = None
     owner: Optional[str] = None
     operator: Optional[str] = None
+    # DG Shipping / e-Samudra fields
+    official_number: Optional[str] = None
+    kilo_watt: Optional[float] = None
+    sea_refers_cba: Optional[bool] = None
+    # P&I Details
+    pi_policy_number: Optional[str] = None
+    pi_policy_validity: Optional[datetime] = None
+    # MLC Details
+    mlc_certificate_no: Optional[str] = None
+    mlc_issue_date: Optional[datetime] = None
+    mlc_expiry_date: Optional[datetime] = None
+    financial_security_doc_number: Optional[str] = None
+    financial_security_validity: Optional[datetime] = None
+
+    @field_validator('pi_policy_validity', 'mlc_issue_date', 'mlc_expiry_date', 'financial_security_validity', mode='before')
+    @classmethod
+    def parse_ship_dates(cls, v):
+        if v is None or v == '':
+            return None
+        if isinstance(v, datetime):
+            return v
+        if isinstance(v, str):
+            if len(v) == 10 and '-' in v:
+                return datetime.strptime(v, '%Y-%m-%d')
+            if 'T' in v:
+                return datetime.fromisoformat(v.replace('Z', '+00:00'))
+            return datetime.fromisoformat(v)
+        return v
 
 class ShipResponse(BaseModel):
     id: str
@@ -89,8 +145,22 @@ class ShipResponse(BaseModel):
     owner: Optional[str] = None
     operator: Optional[str] = None
     crew_count: int = 0
+    # DG Shipping / e-Samudra fields
+    official_number: Optional[str] = None
+    kilo_watt: Optional[float] = None
+    sea_refers_cba: bool = False
+    # P&I Details
+    pi_policy_number: Optional[str] = None
+    pi_policy_validity: Optional[datetime] = None
+    # MLC Details
+    mlc_certificate_no: Optional[str] = None
+    mlc_issue_date: Optional[datetime] = None
+    mlc_expiry_date: Optional[datetime] = None
+    financial_security_doc_number: Optional[str] = None
+    financial_security_validity: Optional[datetime] = None
     created_at: datetime
     updated_at: datetime
+
 
 # PMS (Planned Maintenance System) Schemas
 class TaskStatus(str, Enum):

@@ -94,6 +94,20 @@ class Ship(BaseModel):
         self.status: ShipStatus = safe_enum_convert(ShipStatus, kwargs.get('status'), ShipStatus.ACTIVE)
         self.owner: Optional[str] = kwargs.get('owner')
         self.operator: Optional[str] = kwargs.get('operator')
+        # DG Shipping / e-Samudra fields
+        self.official_number: Optional[str] = kwargs.get('official_number')
+        self.kilo_watt: Optional[float] = kwargs.get('kilo_watt')
+        self.sea_refers_cba: bool = kwargs.get('sea_refers_cba', False)
+        # P&I Details
+        self.pi_policy_number: Optional[str] = kwargs.get('pi_policy_number')
+        self.pi_policy_validity: Optional[datetime] = kwargs.get('pi_policy_validity')
+        # MLC Details
+        self.mlc_certificate_no: Optional[str] = kwargs.get('mlc_certificate_no')
+        self.mlc_issue_date: Optional[datetime] = kwargs.get('mlc_issue_date')
+        self.mlc_expiry_date: Optional[datetime] = kwargs.get('mlc_expiry_date')
+        self.financial_security_doc_number: Optional[str] = kwargs.get('financial_security_doc_number')
+        self.financial_security_validity: Optional[datetime] = kwargs.get('financial_security_validity')
+
 
 class PMSTask(BaseModel):
     def __init__(self, **kwargs):

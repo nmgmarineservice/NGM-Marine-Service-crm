@@ -280,6 +280,19 @@ export interface ShipResponse {
   owner?: string;
   operator?: string;
   crew_count: number;
+  // DG Shipping / e-Samudra fields
+  official_number?: string;
+  kilo_watt?: number;
+  sea_refers_cba?: boolean;
+  // P&I Details
+  pi_policy_number?: string;
+  pi_policy_validity?: string;
+  // MLC Details
+  mlc_certificate_no?: string;
+  mlc_issue_date?: string;
+  mlc_expiry_date?: string;
+  financial_security_doc_number?: string;
+  financial_security_validity?: string;
   created_at: string;
   updated_at: string;
 }
@@ -295,6 +308,19 @@ export interface ShipCreate {
   status?: 'active' | 'maintenance' | 'docked' | 'inactive';
   owner?: string;
   operator?: string;
+  // DG Shipping / e-Samudra fields
+  official_number?: string;
+  kilo_watt?: number;
+  sea_refers_cba?: boolean;
+  // P&I Details
+  pi_policy_number?: string;
+  pi_policy_validity?: string;
+  // MLC Details
+  mlc_certificate_no?: string;
+  mlc_issue_date?: string;
+  mlc_expiry_date?: string;
+  financial_security_doc_number?: string;
+  financial_security_validity?: string;
 }
 
 export interface ShipUpdate {
@@ -308,6 +334,19 @@ export interface ShipUpdate {
   built_year?: number;
   owner?: string;
   operator?: string;
+  // DG Shipping / e-Samudra fields
+  official_number?: string;
+  kilo_watt?: number;
+  sea_refers_cba?: boolean;
+  // P&I Details
+  pi_policy_number?: string;
+  pi_policy_validity?: string;
+  // MLC Details
+  mlc_certificate_no?: string;
+  mlc_issue_date?: string;
+  mlc_expiry_date?: string;
+  financial_security_doc_number?: string;
+  financial_security_validity?: string;
 }
 
 export interface PMSTaskResponse {
